@@ -1,0 +1,26 @@
+# Dependencies & build
+node_modules/
+out/
+dist/
+release/
+*.log
+npm-debug.log*
+
+# Env / secrets
+.env
+.env.local
+.env.*.local
+
+# OS / editor
+.DS_Store
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# Electron
+*.asar
+
+# OneDrive / sync noise (si clonás dentro de una carpeta sincronizada)
+~$*
