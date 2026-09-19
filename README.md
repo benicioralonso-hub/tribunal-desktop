@@ -17,9 +17,31 @@ Google Drive: todo es disco local (`dialog.showOpenDialog` + `fs`).
 ## Setup (PC o laptop)
 
 ```bash
-git clone <URL_DE_ESTE_REPO>
+git clone https://github.com/benicioralonso-hub/tribunal-desktop.git
 cd tribunal-desktop
 npm install
+npm run dev
+```
+
+Si clonás desde ZIP o OneDrive, **borrá** `node_modules` y corré `npm install` de nuevo
+(no copies `node_modules` entre máquinas).
+
+### Error: `Electron uninstall`
+
+El paquete npm está, pero falta el binario nativo. En PowerShell:
+
+```powershell
+cd C:\ruta\al\tribunal-desktop
+Remove-Item -Recurse -Force node_modules
+npm install
+npm run electron:install
+npm run dev
+```
+
+Alternativa rápida (sin borrar todo):
+
+```powershell
+node node_modules\electron\install.js
 npm run dev
 ```
 
@@ -28,6 +50,7 @@ npm run dev
 ```bash
 git pull
 npm install   # solo si cambió package.json
+npm run electron:install   # si falla Electron uninstall
 npm run dev
 ```
 
