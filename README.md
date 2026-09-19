@@ -26,24 +26,30 @@ npm run dev
 Si clonás desde ZIP o OneDrive, **borrá** `node_modules` y corré `npm install` de nuevo
 (no copies `node_modules` entre máquinas).
 
-### Error: `Electron uninstall`
+### Error: `Electron uninstall` / `spawn ...electron.exe\r\n`
 
-El paquete npm está, pero falta el binario nativo. En PowerShell:
+En PowerShell, desde la carpeta del repo:
 
 ```powershell
-cd C:\ruta\al\tribunal-desktop
-Remove-Item -Recurse -Force node_modules
-npm install
+git pull
+npm install-scripts approve electron
+npm install-scripts approve esbuild
 npm run electron:install
 npm run dev
 ```
 
-Alternativa rápida (sin borrar todo):
+Si la descarga automática falla (firewall), bajá el ZIP:
+
+https://github.com/electron/electron/releases/download/v37.10.3/electron-v37.10.3-win32-x64.zip
+
+y después:
 
 ```powershell
-node node_modules\electron\install.js
+npm run electron:unpack-zip -- $env:USERPROFILE\Downloads\electron-v37.10.3-win32-x64.zip
 npm run dev
 ```
+
+Atajo CMD: `scripts\setup-windows.cmd`
 
 ## Actualizar en otra máquina (sin ZIP)
 
