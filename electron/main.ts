@@ -5,6 +5,7 @@ import { loadGeminiEnv } from "./load-env";
 import { registerStage1Ipc } from "./ipc/stage1-select";
 import { registerStage2Ipc } from "./ipc/stage2-map";
 import { registerStage3Ipc } from "./ipc/stage3-audit";
+import { registerStage4Ipc } from "./ipc/stage4-export";
 import { SECURE_WEB_PREFS } from "./security";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -42,6 +43,7 @@ app.whenReady().then(() => {
   registerStage1Ipc();
   registerStage2Ipc();
   registerStage3Ipc();
+  registerStage4Ipc();
   createWindow();
 
   app.on("activate", () => {

@@ -53,7 +53,15 @@ export default function App() {
       ) : null}
       {stage === 4 ? (
         <StageExport
-          caseCount={auditedCases.length || mappedCases.length}
+          cases={
+            auditedCases.length > 0
+              ? auditedCases
+              : mappedCases.map((c) => ({
+                  ...c,
+                  auditNotes: [],
+                  correctionsApplied: false,
+                }))
+          }
           onBack={() => setStage(3)}
         />
       ) : null}

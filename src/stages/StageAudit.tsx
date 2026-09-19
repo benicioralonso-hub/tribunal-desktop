@@ -17,6 +17,7 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
   const [pending, startTransition] = useTransition();
   const [audited, setAudited] = useState<AuditedCase[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [configured, setConfigured] = useState<boolean | null>(null);
   const [progress, setProgress] = useState<AuditProgressEvent>({
     done: 0,
     total: cases.length,
@@ -25,15 +26,24 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
   const [meta, setMeta] = useState<{
     durationMs: number;
     correctedCount: number;
+    mode: string;
   } | null>(null);
   const [started, setStarted] = useState(false);
   const [elapsedMs, setElapsedMs] = useState(0);
   const tickRef = useRef<number | null>(null);
   const t0Ref = useRef(0);
+  const autoStarted = useRef(false);
 
   useEffect(() => {
     const api = getTribunalApi();
     return api.onAuditProgress((ev) => setProgress(ev));
+  }, []);
+
+  useEffect(() => {
+    void getTribunalApi()
+      .getAuditStatus()
+      .then((s) => setConfigured(s.configured))
+      .catch(() => setConfigured(false));
   }, []);
 
   useEffect(() => {
@@ -58,27 +68,35 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
     }, 100);
   }
 
-  function runAudit() {
+  function runAudit(opts?: { skipAi?: boolean }) {
     setError(null);
     setAudited([]);
     setMeta(null);
     setStarted(true);
+    const skipAi = Boolean(opts?.skipAi);
     setProgress({
       done: 0,
       total: cases.length,
-      label: `Auditando mapeo con Gemini (${cases.length} casos)…`,
+      label: skipAi
+        ? `Auditoría local (${cases.length} casos)…`
+        : `Auditando mapeo con Gemini (${cases.length} casos)…`,
     });
     startClock();
     startTransition(async () => {
       try {
-        const result = await getTribunalApi().auditMappedCases(cases);
+        const result = await getTribunalApi().auditMappedCases(cases, {
+          skipAi,
+        });
         stopClock();
         if (!result.ok) {
           setError(result.error);
           setProgress({
             done: 0,
             total: cases.length,
-            label: "Auditoría interrumpida",
+            label: result.cancelled
+              ? "Auditoría cancelada"
+              : "Auditoría interrumpida",
+            cancelled: result.cancelled,
           });
           return;
         }
@@ -87,6 +105,7 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
         setMeta({
           durationMs: result.durationMs,
           correctedCount: result.correctedCount,
+          mode: result.mode,
         });
         setProgress({
           done: result.cases.length,
@@ -101,12 +120,18 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
   }
 
   useEffect(() => {
-    if (!started && cases.length > 0) runAudit();
-    // auto-start once
+    if (autoStarted.current || cases.length === 0 || configured === null) return;
+    autoStarted.current = true;
+    // Con o sin key: arranca (sin key → heurística local automática en main)
+    runAudit({ skipAi: !configured });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [configured]);
 
-  const running = (pending || !meta) && started && !error;
+  async function onCancel() {
+    await getTribunalApi().cancelAudit();
+  }
+
+  const running = pending && started && !meta;
   const corrected = audited.filter((c) => c.correctionsApplied);
 
   return (
@@ -115,17 +140,38 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
       <p className="lede">
         Segunda instancia con Gemini sobre {cases.length} caso(s) mapeados: solo
         ortografía, tipeo y género — sin reescribir el fallo.
+        {configured === false ? (
+          <>
+            {" "}
+            <strong>Sin GEMINI_API_KEY</strong> — se usa heurística local (o
+            configurá `.env`).
+          </>
+        ) : null}
+        {configured === true ? <> Gemini configurado.</> : null}
       </p>
 
       <div className="cta-row">
         <button
           type="button"
           className="btn-primary"
-          onClick={runAudit}
+          onClick={() => runAudit({ skipAi: false })}
           disabled={pending || cases.length === 0}
         >
           {pending ? "Auditando…" : started ? "Volver a auditar" : "Auditar mapeo"}
         </button>
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => runAudit({ skipAi: true })}
+          disabled={pending || cases.length === 0}
+        >
+          Continuar sin IA
+        </button>
+        {running ? (
+          <button type="button" className="btn-secondary" onClick={onCancel}>
+            Cancelar
+          </button>
+        ) : null}
         <button type="button" className="btn-secondary" onClick={onBack}>
           Volver al mapeo
         </button>
@@ -146,7 +192,7 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
           done={progress.done}
           total={progress.total}
           elapsedMs={meta?.durationMs ?? elapsedMs}
-          running={Boolean(running && !meta)}
+          running={Boolean(running)}
           unitLabel="casos"
         />
       ) : null}
@@ -154,7 +200,8 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
       {meta && !pending ? (
         <p className="status-msg" data-tone="ok">
           Tiempo total: {(meta.durationMs / 1000).toFixed(2)}s ·{" "}
-          {meta.correctedCount} corrección(es) · {audited.length} casos
+          {meta.correctedCount} corrección(es) · {audited.length} casos · modo{" "}
+          {meta.mode}
         </p>
       ) : null}
 

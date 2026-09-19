@@ -27,8 +27,8 @@ Sin Google Drive, sin D1, sin el monorepo PWA.
 |---|--------------|--------|
 | 1 | `electron/ipc/stage1-select.ts` | Hecho — `dialog` + `fs` |
 | 2 | `electron/ipc/stage2-map.ts` + `workers/pdf-map.worker.ts` | Hecho — mapeo clásico |
-| 3 | `shared/ai/audit-prompt.ts` + stage3 IPC | Hecho — Gemini ortografía/tipeo/género |
-| 4 | DOCX Montserrat Bold 500, 12pt, justificado, títulos subrayados | Pendiente |
+| 3 | `shared/ai/audit-prompt.ts` + stage3 IPC | Hecho — batches campos + heurística local |
+| 4 | DOCX Montserrat Bold/Medium 500, 12pt, justificado, títulos subrayados | Hecho |
 
 ### System prompt Estadío 3 (inmutable)
 

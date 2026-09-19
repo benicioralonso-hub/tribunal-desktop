@@ -1,24 +1,13 @@
 import type { MappedCase } from "../map/types";
 
-const MAX_EXCERPT = 6_000;
-
-function clip(text: string, max = MAX_EXCERPT): string {
-  const t = text.trim();
-  if (t.length <= max) return t;
-  return `${t.slice(0, max)}\n…[truncado]`;
-}
-
 /**
- * User prompt: campos mapeados + extractos PDF.
+ * User prompt: solo campos del mapeo (sin PDF).
  * El system prompt (AUDIT_SYSTEM_PROMPT) va aparte e inmutable.
  */
-export function buildAuditUserPrompt(input: {
-  mapped: MappedCase;
-  casoText?: string;
-  informeText?: string;
-}): string {
-  const m = input.mapped;
-  const fields = {
+export function fieldsFromMapped(m: MappedCase) {
+  return {
+    id: m.id,
+    folderName: m.folderName,
     person: m.person,
     club: m.club,
     role: m.role,
@@ -27,22 +16,23 @@ export function buildAuditUserPrompt(input: {
     matchDate: m.matchDate,
     competition: m.competition,
   };
+}
 
-  return `Caso / carpeta: ${m.folderName}
+/** Un solo caso (compat). */
+export function buildAuditUserPrompt(mapped: MappedCase): string {
+  return buildAuditBatchUserPrompt([mapped]);
+}
 
-Campos del mapeo previo (JSON):
-${JSON.stringify(fields, null, 2)}
+/** Batch de casos → un solo user message. */
+export function buildAuditBatchUserPrompt(cases: MappedCase[]): string {
+  const payload = cases.map(fieldsFromMapped);
+  return `Auditar los siguientes casos mapeados (JSON array).
+Para CADA caso devolvé un objeto con: id (igual al de entrada), person, club, role, homeClub, awayClub, matchDate, competition, notes (string[]).
+Si no hay errores en un caso, repetí los valores y notes: [].
+Solo ortografía, tipeo y discordancias de género. NO reescribas fallos ni inventes sanciones.
 
-Texto CASO (extracto):
-"""
-${clip(input.casoText || "(sin texto CASO)")}
-"""
+Casos:
+${JSON.stringify(payload, null, 2)}
 
-Texto INFORME (extracto):
-"""
-${clip(input.informeText || "(sin texto INFORME)")}
-"""
-
-Devolvé un JSON con las mismas claves (person, club, role, homeClub, awayClub, matchDate, competition) ya corregidas si hace falta, y notes: string[] describiendo cada corrección. Si no hay errores, repetí los valores y notes: [].
-NO reescribas el fallo ni inventes sanciones. Solo ortografía, tipeo y género.`;
+Respondé un JSON con forma: { "items": [ ... ] }`;
 }

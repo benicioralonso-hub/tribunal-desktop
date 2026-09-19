@@ -5,6 +5,7 @@ import type {
   AuditedCase,
   AuditProgressEvent,
 } from "../../shared/ai/audit-types";
+import { auditWithLocalHeuristic } from "../../shared/ai/apply-audit-response";
 
 const DEMO_FOLDER = "/demo/boletin-preview";
 
@@ -49,6 +50,22 @@ const DEMO_CASES: MappedCase[] = [
     confidence: 0.92,
     engine: "classical",
   },
+  {
+    id: "demo-2",
+    folderPath: `${DEMO_FOLDER}/Partido-Demo-2`,
+    folderName: "Partido-Demo-2",
+    casoPdfPath: null,
+    informePdfPath: null,
+    homeClub: "Club A",
+    awayClub: "Club B",
+    person: "Camila Rosario Bianchini",
+    club: "Club A",
+    role: "Jugador",
+    matchDate: "2026-03-16",
+    competition: "Torneo Preview",
+    confidence: 0.88,
+    engine: "classical",
+  },
 ];
 
 /**
@@ -60,6 +77,7 @@ export function installBrowserMock(): void {
 
   const mapProgressListeners = new Set<(ev: MapProgressEvent) => void>();
   const auditProgressListeners = new Set<(ev: AuditProgressEvent) => void>();
+  let auditCancel = false;
 
   const api: TribunalApi = {
     selectBoletinFolder: async () => ({
@@ -141,75 +159,124 @@ export function installBrowserMock(): void {
         mapProgressListeners.delete(cb);
       };
     },
-    auditMappedCases: async (cases) => {
-      const total = cases.length || 1;
+    getAuditStatus: async () => ({ configured: true }),
+    cancelAudit: async () => {
+      auditCancel = true;
+      return { ok: true };
+    },
+    auditMappedCases: async (cases, options) => {
+      auditCancel = false;
+      const list = cases.length > 0 ? cases : DEMO_CASES;
+      const total = list.length;
+      const skipAi = Boolean(options?.skipAi);
+
       for (const cb of auditProgressListeners) {
         cb({
           done: 0,
           total,
-          label: `Auditando mapeo con Gemini (${total} casos)…`,
+          label: skipAi
+            ? `Auditoría local (${total} casos)…`
+            : `Auditando mapeo con Gemini (${total} casos, batches)…`,
         });
       }
-      await new Promise((r) => setTimeout(r, 120));
-      for (let done = 1; done <= total; done++) {
-        const c = cases[done - 1] ?? DEMO_CASES[0]!;
-        for (const cb of auditProgressListeners) {
-          cb({
-            done: done - 1,
-            total,
-            label: `Revisando · ${c.folderName}`,
-            currentCaseId: c.id,
-          });
-        }
-        await new Promise((r) => setTimeout(r, 180));
-        for (const cb of auditProgressListeners) {
-          cb({
-            done,
-            total,
-            label: `Auditado ${done}/${total} · ${c.folderName}`,
-            currentCaseId: c.id,
-          });
-        }
-      }
 
-      const audited: AuditedCase[] = (cases.length > 0 ? cases : DEMO_CASES).map(
-        (c) => {
-          // Demo: corrige discordancia de género Jugador → Jugadora
-          if (c.role?.toLowerCase() === "jugador") {
-            return {
-              ...c,
-              role: "Jugadora",
-              engine: "audited" as const,
-              auditNotes: ['rol: "Jugador" → "Jugadora" (género)'],
-              auditModel: "preview-mock",
-              correctionsApplied: true,
-            };
-          }
-          return {
+      const audited: AuditedCase[] = [];
+      for (let i = 0; i < list.length; i += 1) {
+        if (auditCancel) {
+          return { ok: false, error: "Auditoría cancelada", cancelled: true };
+        }
+        const c = list[i]!;
+        await new Promise((r) => setTimeout(r, 100));
+        for (const cb of auditProgressListeners) {
+          cb({
+            done: i,
+            total,
+            label: skipAi
+              ? `Local ${i + 1}/${total} · ${c.folderName}`
+              : `Gemini batch · ${c.folderName}`,
+            currentCaseId: c.id,
+          });
+        }
+
+        if (skipAi) {
+          audited.push(auditWithLocalHeuristic(c, "Continuar sin IA"));
+        } else if (
+          c.role?.toLowerCase() === "jugador" &&
+          (c.person?.toLowerCase().includes("camila") ?? false)
+        ) {
+          audited.push({
             ...c,
-            engine: "classical" as const,
+            role: "Jugadora",
+            engine: "audited",
+            auditNotes: ['rol: "Jugador" → "Jugadora" (género)'],
+            auditModel: "preview-mock",
+            correctionsApplied: true,
+          });
+        } else {
+          audited.push({
+            ...c,
+            engine: "classical",
             auditNotes: [],
             auditModel: "preview-mock",
             correctionsApplied: false,
-          };
-        },
-      );
+          });
+        }
+
+        for (const cb of auditProgressListeners) {
+          cb({
+            done: i + 1,
+            total,
+            label: `Auditado ${i + 1}/${total} · ${c.folderName}`,
+            currentCaseId: c.id,
+          });
+        }
+      }
 
       const correctedCount = audited.filter((c) => c.correctionsApplied).length;
-      const durationMs = 480;
+      const durationMs = 420;
       for (const cb of auditProgressListeners) {
         cb({
           done: total,
           total,
-          label: `Auditoría lista en 0.5s · ${correctedCount} corrección(es)`,
+          label: `Auditoría lista en 0.4s · ${correctedCount} corrección(es)`,
         });
       }
-      return { ok: true, cases: audited, durationMs, correctedCount };
+      return {
+        ok: true,
+        cases: audited,
+        durationMs,
+        correctedCount,
+        mode: skipAi ? "local" : "gemini",
+      };
     },
     onAuditProgress: (cb) => {
       auditProgressListeners.add(cb);
       return () => {
         auditProgressListeners.delete(cb);
+      };
+    },
+    exportBoletinDocx: async (cases) => {
+      await new Promise((r) => setTimeout(r, 200));
+      const blob = new Blob(
+        [
+          `Tribunal Desktop — preview export\nCasos: ${cases.length}\n`,
+          ...cases.map(
+            (c) =>
+              `${c.folderName}\t${c.person ?? ""}\t${c.role ?? ""}\t${c.club ?? ""}\n`,
+          ),
+        ],
+        { type: "text/plain" },
+      );
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "boletin-preview.txt";
+      a.click();
+      URL.revokeObjectURL(url);
+      return {
+        ok: true,
+        filePath: "/demo/downloads/boletin-preview.txt",
+        durationMs: 200,
       };
     },
   };

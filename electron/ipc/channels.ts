@@ -5,6 +5,9 @@ export const IPC = {
   MAP_PROGRESS: "stage2:map-progress",
   AUDIT_MAPPED_CASES: "stage3:audit-mapped-cases",
   AUDIT_PROGRESS: "stage3:audit-progress",
+  AUDIT_STATUS: "stage3:audit-status",
+  AUDIT_CANCEL: "stage3:audit-cancel",
+  EXPORT_BOLETIN_DOCX: "stage4:export-boletin-docx",
 } as const;
 
 export type BoletinFileEntry = {
@@ -20,6 +23,11 @@ export type SelectBoletinResult =
   | { ok: false; canceled: true }
   | { ok: false; error: string };
 
+export type ExportDocxResult =
+  | { ok: true; filePath: string; durationMs: number }
+  | { ok: false; canceled: true }
+  | { ok: false; error: string };
+
 export type {
   MappedCase,
   MapFolderResult,
@@ -30,4 +38,6 @@ export type {
   AuditedCase,
   AuditCasesResult,
   AuditProgressEvent,
+  AuditStatusResult,
+  AuditMappedCasesOptions,
 } from "../../shared/ai/audit-types";

@@ -73,8 +73,8 @@ npm run dev
 
 1. **Selección** — carpeta del boletín en disco (default `G:\` en Windows)
 2. **Mapeo** — pool `worker_threads` + `unpdf`: local, visitante, infractor, rol, club, fecha
-3. **Auditoría IA** — Gemini (placeholder; prompt en `shared/ai/audit-prompt.ts`)
-4. **Export DOCX** — placeholder (Montserrat 500 / 12 / justificado)
+3. **Auditoría IA** — Gemini por batches (campos del mapeo) o heurística local sin key
+4. **Export DOCX** — Montserrat 12pt justificado, títulos subrayados (`shared/docx/`)
 
 ## Secretos
 
@@ -82,8 +82,10 @@ Copiá `.env.example` → `.env` (nunca commitear `.env`):
 
 ```
 GEMINI_API_KEY=
+# GEMINI_MODEL=gemini-2.0-flash
 ```
 
+Sin key, la auditoría usa heurística local de género y permite “Continuar sin IA”.
 ## Estructura
 
 ```

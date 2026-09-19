@@ -12,13 +12,15 @@
     "preview:ui": "vite --config vite.preview.config.ts",
     "test:map": "npx --yes tsx shared/map/__tests__/bianchini.test.ts",
     "test:audit": "npx --yes tsx shared/ai/__tests__/audit-apply.test.ts",
-    "test": "npm run test:map && npm run test:audit",
+    "test:docx": "npx --yes tsx shared/docx/__tests__/docx-build.test.ts",
+    "test": "npm run test:map && npm run test:audit && npm run test:docx",
     "postinstall": "node scripts/ensure-electron.mjs",
     "electron:install": "node scripts/ensure-electron.mjs",
     "electron:unpack-zip": "node scripts/unpack-electron-zip.mjs",
     "start": "electron-vite preview"
   },
   "dependencies": {
+    "docx": "^9.5.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "unpdf": "^1.6.2"
