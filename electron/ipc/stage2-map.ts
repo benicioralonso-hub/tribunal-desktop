@@ -5,12 +5,22 @@ import { randomUUID } from "node:crypto";
 import { IPC } from "./channels";
 import { PdfMapPool } from "../workers/worker-pool";
 import { mergeCasoInforme } from "../../shared/map/map-from-text";
+import {
+  isInformesFolderName,
+  matchLeafFromName,
+} from "../../shared/map/match-link-local";
 import type { MappedCase, MapFolderResult } from "../../shared/map/types";
+import type { WorkerResult } from "../workers/pdf-map.worker";
 
 type PdfHit = {
   absolutePath: string;
   folderPath: string;
   folderName: string;
+};
+
+type ClassifiedHit = PdfHit & {
+  kind: "caso" | "informe" | "otro";
+  leaf: string;
 };
 
 async function walkPdfs(root: string): Promise<PdfHit[]> {
@@ -53,6 +63,190 @@ function broadcastProgress(
   }
 }
 
+function classifyHit(
+  hit: PdfHit,
+  res: WorkerResult | undefined,
+): ClassifiedHit {
+  const fileName = path.basename(hit.absolutePath);
+  let kind: "caso" | "informe" | "otro" = "otro";
+  if (res?.ok) {
+    kind = res.facts.kind;
+  }
+  if (kind === "otro") {
+    const name = fileName.toLowerCase();
+    if (name.includes("informe")) kind = "informe";
+    else if (name.includes("caso")) kind = "caso";
+  }
+  const leaf = matchLeafFromName(hit.folderName, fileName);
+  return { ...hit, kind, leaf };
+}
+
+function pushMappedCase(
+  cases: MappedCase[],
+  opts: {
+    folderPath: string;
+    folderName: string;
+    caso: PdfHit | null;
+    informe: PdfHit | null;
+    casoRes?: WorkerResult;
+    infRes?: WorkerResult;
+  },
+): void {
+  const facts = mergeCasoInforme(
+    opts.casoRes?.ok ? opts.casoRes.facts : null,
+    opts.infRes?.ok ? opts.infRes.facts : null,
+    opts.folderName,
+  );
+  cases.push({
+    id: randomUUID(),
+    folderPath: opts.folderPath,
+    folderName: opts.folderName,
+    casoPdfPath: opts.caso?.absolutePath ?? null,
+    informePdfPath: opts.informe?.absolutePath ?? null,
+    homeClub: facts.homeClub,
+    awayClub: facts.awayClub,
+    person: facts.person,
+    club: facts.club,
+    role: facts.role,
+    matchDate: facts.matchDate,
+    competition: facts.competition,
+    confidence: facts.confidence,
+    engine: "classical",
+    error:
+      opts.casoRes && !opts.casoRes.ok
+        ? opts.casoRes.error
+        : opts.infRes && !opts.infRes.ok
+          ? opts.infRes.error
+          : undefined,
+  });
+}
+
+/**
+ * Agrupa CASO + INFORME por carpeta de partido.
+ * Si el INFORME vive bajo Informes/, lo empareja por leaf de partido.
+ */
+function buildMappedCases(
+  pdfs: PdfHit[],
+  byPath: Map<string, WorkerResult>,
+): MappedCase[] {
+  const cases: MappedCase[] = [];
+  const classified = pdfs.map((hit) =>
+    classifyHit(hit, byPath.get(hit.absolutePath)),
+  );
+
+  const usedInformes = new Set<string>();
+
+  // Informes bajo carpeta Informes/ indexados por leaf
+  const informesByLeaf = new Map<string, ClassifiedHit[]>();
+  for (const hit of classified) {
+    if (hit.kind !== "informe") continue;
+    if (!isInformesFolderName(hit.folderName)) continue;
+    const list = informesByLeaf.get(hit.leaf) ?? [];
+    list.push(hit);
+    informesByLeaf.set(hit.leaf, list);
+  }
+
+  // Agrupar por carpeta padre (excluyendo Informes/ como carpeta de partido)
+  const byFolder = new Map<string, ClassifiedHit[]>();
+  for (const hit of classified) {
+    if (isInformesFolderName(hit.folderName) && hit.kind === "informe") {
+      continue; // se emparejan después vía leaf
+    }
+    const list = byFolder.get(hit.folderPath) ?? [];
+    list.push(hit);
+    byFolder.set(hit.folderPath, list);
+  }
+
+  for (const [folder, hits] of byFolder) {
+    const folderName = path.basename(folder);
+    const casoHits = hits.filter((h) => h.kind === "caso");
+    const informeHits = hits.filter((h) => h.kind === "informe");
+    const otros = hits.filter((h) => h.kind === "otro");
+
+    // Cross-folder: informes en Informes/ con mismo leaf
+    const folderLeaf = matchLeafFromName(folderName);
+    const crossInformes = (informesByLeaf.get(folderLeaf) ?? []).filter(
+      (inf) => !usedInformes.has(inf.absolutePath),
+    );
+    // También buscar por leaf de cada caso
+    for (const caso of casoHits) {
+      for (const inf of informesByLeaf.get(caso.leaf) ?? []) {
+        if (
+          !usedInformes.has(inf.absolutePath) &&
+          !crossInformes.some((x) => x.absolutePath === inf.absolutePath)
+        ) {
+          crossInformes.push(inf);
+        }
+      }
+    }
+
+    const allInformes = [...informeHits, ...crossInformes];
+
+    const pairs =
+      casoHits.length > 0 ? casoHits : otros.length > 0 ? otros : [];
+
+    if (pairs.length === 0 && allInformes.length > 0) {
+      for (const inf of allInformes) {
+        usedInformes.add(inf.absolutePath);
+        pushMappedCase(cases, {
+          folderPath: folder,
+          folderName,
+          caso: null,
+          informe: inf,
+          infRes: byPath.get(inf.absolutePath),
+        });
+      }
+      continue;
+    }
+
+    for (let i = 0; i < pairs.length; i += 1) {
+      const caso = pairs[i]!;
+      const informe = allInformes[Math.min(i, Math.max(0, allInformes.length - 1))];
+      if (informe) usedInformes.add(informe.absolutePath);
+      pushMappedCase(cases, {
+        folderPath: folder,
+        folderName,
+        caso,
+        informe: informe ?? null,
+        casoRes: byPath.get(caso.absolutePath),
+        infRes: informe ? byPath.get(informe.absolutePath) : undefined,
+      });
+    }
+  }
+
+  // Informes huérfanos bajo Informes/ sin CASO emparejado
+  for (const hit of classified) {
+    if (hit.kind !== "informe") continue;
+    if (!isInformesFolderName(hit.folderName)) continue;
+    if (usedInformes.has(hit.absolutePath)) continue;
+    pushMappedCase(cases, {
+      folderPath: hit.folderPath,
+      folderName: hit.leaf || hit.folderName,
+      caso: null,
+      informe: hit,
+      infRes: byPath.get(hit.absolutePath),
+    });
+  }
+
+  // PDFs con error de worker que no entraron en ningún grupo
+  for (const hit of pdfs) {
+    const res = byPath.get(hit.absolutePath);
+    if (res && !res.ok) {
+      const already = cases.some(
+        (c) =>
+          c.casoPdfPath === hit.absolutePath ||
+          c.informePdfPath === hit.absolutePath,
+      );
+      if (!already) {
+        casesPushError(cases, hit, res.error);
+      }
+    }
+  }
+
+  cases.sort((a, b) => a.folderName.localeCompare(b.folderName, "es"));
+  return cases;
+}
+
 export function registerStage2Ipc(): void {
   ipcMain.handle(
     IPC.MAP_BOLETIN_FOLDER,
@@ -87,109 +281,7 @@ export function registerStage2Ipc(): void {
           results.map((r) => [r.pdfPath || "", r] as const),
         );
 
-        // Agrupar por carpeta de partido: CASO + INFORME
-        const byFolder = new Map<string, PdfHit[]>();
-        for (const hit of pdfs) {
-          const list = byFolder.get(hit.folderPath) ?? [];
-          list.push(hit);
-          byFolder.set(hit.folderPath, list);
-        }
-
-        const cases: MappedCase[] = [];
-        for (const [folder, hits] of byFolder) {
-          const folderName = path.basename(folder);
-          const casoHits: PdfHit[] = [];
-          const informeHits: PdfHit[] = [];
-          const otros: PdfHit[] = [];
-
-          for (const hit of hits) {
-            const res = byPath.get(hit.absolutePath);
-            if (!res || !res.ok) {
-              casosPushError(cases, hit, res && !res.ok ? res.error : "sin resultado");
-              continue;
-            }
-            if (res.facts.kind === "caso") casoHits.push(hit);
-            else if (res.facts.kind === "informe") informeHits.push(hit);
-            else {
-              // Clasificar por nombre de archivo si el texto fue pobre
-              const name = path.basename(hit.absolutePath).toLowerCase();
-              if (name.includes("informe")) informeHits.push(hit);
-              else if (name.includes("caso")) casoHits.push(hit);
-              else otros.push(hit);
-            }
-          }
-
-          const pairs =
-            casoHits.length > 0
-              ? casoHits
-              : otros.length > 0
-                ? otros
-                : [];
-
-          if (pairs.length === 0 && informeHits.length > 0) {
-            // Solo informes: un registro por informe
-            for (const inf of informeHits) {
-              const infRes = byPath.get(inf.absolutePath);
-              const facts =
-                infRes && infRes.ok
-                  ? mergeCasoInforme(null, infRes.facts, folderName)
-                  : mergeCasoInforme(null, null, folderName);
-              cases.push({
-                id: randomUUID(),
-                folderPath: folder,
-                folderName,
-                casoPdfPath: null,
-                informePdfPath: inf.absolutePath,
-                homeClub: facts.homeClub,
-                awayClub: facts.awayClub,
-                person: facts.person,
-                club: facts.club,
-                role: facts.role,
-                matchDate: facts.matchDate,
-                competition: facts.competition,
-                confidence: facts.confidence,
-                engine: "classical",
-              });
-            }
-            continue;
-          }
-
-          for (let i = 0; i < pairs.length; i += 1) {
-            const caso = pairs[i];
-            const informe = informeHits[Math.min(i, informeHits.length - 1)];
-            const casoRes = byPath.get(caso.absolutePath);
-            const infRes = informe
-              ? byPath.get(informe.absolutePath)
-              : undefined;
-            const facts = mergeCasoInforme(
-              casoRes && casoRes.ok ? casoRes.facts : null,
-              infRes && infRes.ok ? infRes.facts : null,
-              folderName,
-            );
-            cases.push({
-              id: randomUUID(),
-              folderPath: folder,
-              folderName,
-              casoPdfPath: caso.absolutePath,
-              informePdfPath: informe?.absolutePath ?? null,
-              homeClub: facts.homeClub,
-              awayClub: facts.awayClub,
-              person: facts.person,
-              club: facts.club,
-              role: facts.role,
-              matchDate: facts.matchDate,
-              competition: facts.competition,
-              confidence: facts.confidence,
-              engine: "classical",
-              error:
-                casoRes && !casoRes.ok ? casoRes.error : undefined,
-            });
-          }
-        }
-
-        cases.sort((a, b) =>
-          a.folderName.localeCompare(b.folderName, "es"),
-        );
+        const cases = buildMappedCases(pdfs, byPath);
 
         return {
           ok: true,
@@ -209,7 +301,7 @@ export function registerStage2Ipc(): void {
   );
 }
 
-function casosPushError(
+function casesPushError(
   cases: MappedCase[],
   hit: PdfHit,
   error: string,
