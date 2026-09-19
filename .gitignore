@@ -5,6 +5,8 @@ dist/
 release/
 *.log
 npm-debug.log*
+repomix-output.md
+repomix-output.xml
 
 # Env / secrets
 .env

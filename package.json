@@ -10,6 +10,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "preview:ui": "vite --config vite.preview.config.ts",
+    "test:map": "npx --yes tsx shared/map/__tests__/bianchini.test.ts",
     "start": "electron-vite preview"
   },
   "dependencies": {

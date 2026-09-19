@@ -1,5 +1,6 @@
 import { parentPort } from "node:worker_threads";
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { extractTextFromPdf } from "../../shared/pdf/extract-text";
 import { mapFactsFromText } from "../../shared/map/map-from-text";
 
@@ -9,18 +10,20 @@ export type WorkerJob = {
   folderName: string;
 };
 
-export type WorkerResult = {
-  id: string;
-  pdfPath: string;
-  ok: true;
-  textLen: number;
-  facts: ReturnType<typeof mapFactsFromText>;
-} | {
-  id: string;
-  pdfPath: string;
-  ok: false;
-  error: string;
-};
+export type WorkerResult =
+  | {
+      id: string;
+      pdfPath: string;
+      ok: true;
+      textLen: number;
+      facts: ReturnType<typeof mapFactsFromText>;
+    }
+  | {
+      id: string;
+      pdfPath: string;
+      ok: false;
+      error: string;
+    };
 
 if (!parentPort) {
   throw new Error("pdf-map.worker debe correr en worker_threads");
@@ -30,7 +33,10 @@ parentPort.on("message", async (job: WorkerJob) => {
   try {
     const bytes = await readFile(job.pdfPath);
     const text = await extractTextFromPdf(bytes);
-    const facts = mapFactsFromText(text, { folderName: job.folderName });
+    const facts = mapFactsFromText(text, {
+      folderName: job.folderName,
+      fileName: path.basename(job.pdfPath),
+    });
     const result: WorkerResult = {
       id: job.id,
       pdfPath: job.pdfPath,
