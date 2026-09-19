@@ -1,0 +1,17 @@
+{
+  "name": "Tribunal Desktop",
+  "install": "npm ci",
+  "terminals": [
+    {
+      "name": "UI Preview",
+      "command": "npm run preview:ui",
+      "description": "Vite host of the React wizard with browser mock API (no Electron). Open http://127.0.0.1:5173 to watch UI changes while editing."
+    }
+  ],
+  "ports": [
+    {
+      "name": "UI Preview",
+      "port": 5173
+    }
+  ]
+}

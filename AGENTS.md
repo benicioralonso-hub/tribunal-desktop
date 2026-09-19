@@ -50,9 +50,13 @@ La lógica de negocio se inspiró en el PWA `tribunal-app` (`lib/pdf-extract`,
 `comet-extract`, `codigos-catalog`, `llm-client`, `boletin-docx`) pero este
 repo es autocontenido: no importar desde ese monorepo.
 
-## Convenciones
+## Cloud Agents (Cursor)
 
-- No inicializar git dentro de subcarpetas
-- No subir secretos
-- Commits en español o inglés claro; PRs pequeños por estadío
-- Al terminar un estadío: `npm run build` debe pasar
+Entorno en `.cursor/environment.json`:
+
+- `install` → `npm ci`
+- terminal **UI Preview** → `npm run preview:ui` en `http://127.0.0.1:5173`
+- Sin display gráfico: el preview del wizard usa un mock de `window.tribunal`
+  (ver `src/bridge/browser-mock.ts`). IPC real solo con Electron local (`npm run dev`).
+
+Al terminar un estadío: `npm run build` debe pasar.

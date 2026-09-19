@@ -37,7 +37,8 @@ npm run dev
 |---------|----------|
 | `npm run dev` | Electron + Vite en desarrollo |
 | `npm run build` | Compila main / preload / renderer / workers |
-| `npm run preview` | Preview del build |
+| `npm run preview:ui` | Vite en :5173 — wizard en browser (mock API; Cloud Agents) |
+| `npm run preview` | Preview del build Electron |
 
 ## Flujo de la app (4 estadíos)
 

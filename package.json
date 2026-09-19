@@ -9,6 +9,7 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
+    "preview:ui": "vite --config vite.preview.config.ts",
     "start": "electron-vite preview"
   },
   "dependencies": {
