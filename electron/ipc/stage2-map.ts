@@ -9,7 +9,11 @@ import {
   isInformesFolderName,
   matchLeafFromName,
 } from "../../shared/map/match-link-local";
-import type { MappedCase, MapFolderResult } from "../../shared/map/types";
+import type {
+  MappedCase,
+  MapFolderResult,
+  MapProgressEvent,
+} from "../../shared/map/types";
 import type { WorkerResult } from "../workers/pdf-map.worker";
 
 type PdfHit = {
@@ -33,10 +37,11 @@ async function walkPdfs(root: string): Promise<PdfHit[]> {
     } catch {
       return;
     }
+    const subdirs: string[] = [];
     for (const entry of entries) {
       const absolutePath = path.join(dir, entry.name);
       if (entry.isDirectory()) {
-        await walk(absolutePath);
+        subdirs.push(absolutePath);
         continue;
       }
       if (!entry.isFile()) continue;
@@ -47,20 +52,25 @@ async function walkPdfs(root: string): Promise<PdfHit[]> {
         folderName: path.basename(dir),
       });
     }
+    // Recorrido paralelo: usa I/O y CPU local al máximo
+    if (subdirs.length > 0) {
+      await Promise.all(subdirs.map((d) => walk(d)));
+    }
   }
 
   await walk(root);
   return out;
 }
 
-function broadcastProgress(
-  done: number,
-  total: number,
-  currentPath?: string,
-): void {
+function broadcastProgress(ev: MapProgressEvent): void {
   for (const win of BrowserWindow.getAllWindows()) {
-    win.webContents.send(IPC.MAP_PROGRESS, { done, total, currentPath });
+    win.webContents.send(IPC.MAP_PROGRESS, ev);
   }
+}
+
+function shortName(filePath?: string): string {
+  if (!filePath) return "";
+  return path.basename(filePath);
 }
 
 function classifyHit(
@@ -256,6 +266,14 @@ export function registerStage2Ipc(): void {
       }
 
       const started = Date.now();
+
+      broadcastProgress({
+        phase: "scanning",
+        done: 0,
+        total: 0,
+        label: "Escaneando carpeta del boletín…",
+      });
+
       const pdfs = await walkPdfs(folderPath);
       if (pdfs.length === 0) {
         return {
@@ -266,15 +284,41 @@ export function registerStage2Ipc(): void {
 
       const pool = new PdfMapPool();
       try {
+        broadcastProgress({
+          phase: "starting",
+          done: 0,
+          total: pdfs.length,
+          label: `Arrancando ${pool.size} workers locales…`,
+          workerCount: pool.size,
+        });
+
         const jobs = pdfs.map((p) => ({
           id: randomUUID(),
           pdfPath: p.absolutePath,
           folderName: p.folderName,
         }));
 
-        broadcastProgress(0, jobs.length);
-        const results = await pool.mapAll(jobs, (done, total, currentPath) => {
-          broadcastProgress(done, total, currentPath);
+        const results = await pool.mapAll(jobs, (info) => {
+          const name = shortName(info.currentPath);
+          const label = info.started
+            ? `Extrayendo · ${name}`
+            : `Listo ${info.done}/${info.total} · ${name}`;
+          broadcastProgress({
+            phase: "mapping",
+            done: info.done,
+            total: info.total,
+            label,
+            currentPath: info.currentPath,
+            workerCount: pool.size,
+          });
+        });
+
+        broadcastProgress({
+          phase: "merging",
+          done: pdfs.length,
+          total: pdfs.length,
+          label: "Emparejando CASO + INFORME…",
+          workerCount: pool.size,
         });
 
         const byPath = new Map(
@@ -282,12 +326,21 @@ export function registerStage2Ipc(): void {
         );
 
         const cases = buildMappedCases(pdfs, byPath);
+        const durationMs = Date.now() - started;
+
+        broadcastProgress({
+          phase: "done",
+          done: pdfs.length,
+          total: pdfs.length,
+          label: `Mapeo listo en ${(durationMs / 1000).toFixed(1)}s`,
+          workerCount: pool.size,
+        });
 
         return {
           ok: true,
           cases,
           pdfCount: pdfs.length,
-          durationMs: Date.now() - started,
+          durationMs,
         };
       } catch (err) {
         return {

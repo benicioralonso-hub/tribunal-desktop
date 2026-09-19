@@ -69,20 +69,65 @@ export function installBrowserMock(): void {
     }),
     mapBoletinFolder: async () => {
       const total = 2;
-      for (let done = 1; done <= total; done++) {
-        const ev: MapProgressEvent = {
-          done,
+      const phases: MapProgressEvent[] = [
+        {
+          phase: "scanning",
+          done: 0,
+          total: 0,
+          label: "Escaneando carpeta del boletín…",
+          workerCount: 4,
+        },
+        {
+          phase: "starting",
+          done: 0,
           total,
-          currentPath: DEMO_FILES[done]?.absolutePath,
-        };
+          label: "Arrancando 4 workers locales…",
+          workerCount: 4,
+        },
+      ];
+      for (const ev of phases) {
         for (const cb of progressListeners) cb(ev);
-        await new Promise((r) => setTimeout(r, 120));
+        await new Promise((r) => setTimeout(r, 80));
       }
+      for (let done = 1; done <= total; done++) {
+        const path = DEMO_FILES[done]?.absolutePath;
+        for (const cb of progressListeners) {
+          cb({
+            phase: "mapping",
+            done: done - 1,
+            total,
+            label: `Extrayendo · ${path?.split("/").pop() ?? "PDF"}`,
+            currentPath: path,
+            workerCount: 4,
+          });
+        }
+        await new Promise((r) => setTimeout(r, 140));
+        for (const cb of progressListeners) {
+          cb({
+            phase: "mapping",
+            done,
+            total,
+            label: `Listo ${done}/${total}`,
+            currentPath: path,
+            workerCount: 4,
+          });
+        }
+      }
+      for (const cb of progressListeners) {
+        cb({
+          phase: "merging",
+          done: total,
+          total,
+          label: "Emparejando CASO + INFORME…",
+          workerCount: 4,
+        });
+      }
+      await new Promise((r) => setTimeout(r, 80));
       return {
         ok: true,
         cases: DEMO_CASES,
         pdfCount: total,
-        durationMs: 280,
+        durationMs: 520,
       };
     },
     onMapProgress: (cb) => {

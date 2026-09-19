@@ -29,6 +29,9 @@ if (!parentPort) {
   throw new Error("pdf-map.worker debe correr en worker_threads");
 }
 
+// Precarga unpdf al arrancar el worker (evita cold-start en el 1º PDF)
+void import("unpdf").catch(() => undefined);
+
 parentPort.on("message", async (job: WorkerJob) => {
   try {
     const bytes = await readFile(job.pdfPath);

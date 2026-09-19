@@ -266,6 +266,123 @@ button:disabled {
   color: var(--warn-fg);
 }
 
+.map-busy {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 14px 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, #2a2a2e 0%, #232326 100%);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.28);
+  animation: fade-up 360ms ease-out both;
+}
+
+.map-busy[data-running="false"] {
+  border-color: #3a4a3a;
+}
+
+.map-busy-top {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.map-spinner {
+  width: 22px;
+  height: 22px;
+  margin-top: 2px;
+  border-radius: 50%;
+  border: 2px solid #4a5560;
+  border-top-color: var(--accent);
+  flex-shrink: 0;
+}
+
+.map-busy[data-running="true"] .map-spinner {
+  animation: map-spin 700ms linear infinite;
+}
+
+.map-busy[data-running="false"] .map-spinner {
+  border-color: var(--ok-fg);
+  border-top-color: var(--ok-fg);
+  background: radial-gradient(circle at 50% 50%, var(--ok-fg) 0 35%, transparent 36%);
+}
+
+.map-busy-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.map-busy-label {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.map-busy-meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.map-busy-clock {
+  color: var(--ink);
+  font-weight: 600;
+}
+
+.map-busy-bar {
+  height: 6px;
+  background: #1a1a1c;
+  overflow: hidden;
+  border: 1px solid #3a3a3e;
+}
+
+.map-busy-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, #8fb4d4, var(--accent));
+  transition: width 180ms ease;
+}
+
+.map-busy-bar-fill[data-indeterminate="true"] {
+  width: 28% !important;
+  animation: map-indeterminate 1.1s ease-in-out infinite;
+}
+
+.map-busy[data-running="true"] .map-busy-label {
+  animation: map-label-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes map-label-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.72;
+  }
+}
+
+@keyframes map-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes map-indeterminate {
+  0% {
+    transform: translateX(-120%);
+  }
+  100% {
+    transform: translateX(400%);
+  }
+}
+
 @media (max-width: 640px) {
   .wizard-shell {
     padding: 20px 16px 28px;

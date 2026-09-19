@@ -1,6 +1,7 @@
-import { useEffect, useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { getTribunalApi } from "../bridge/api";
-import type { MappedCase } from "../../shared/map/types";
+import { MapBusy } from "../components/MapBusy";
+import type { MappedCase, MapProgressEvent } from "../../shared/map/types";
 
 type Props = {
   folderPath: string;
@@ -12,38 +13,88 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
   const [pending, startTransition] = useTransition();
   const [cases, setCases] = useState<MappedCase[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [progress, setProgress] = useState<{ done: number; total: number }>({
+  const [progress, setProgress] = useState<MapProgressEvent>({
+    phase: "scanning",
     done: 0,
     total: 0,
+    label: "Listo para mapear",
   });
-  const [meta, setMeta] = useState<{ pdfCount: number; durationMs: number } | null>(
-    null,
-  );
+  const [meta, setMeta] = useState<{
+    pdfCount: number;
+    durationMs: number;
+  } | null>(null);
   const [started, setStarted] = useState(false);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const tickRef = useRef<number | null>(null);
+  const t0Ref = useRef<number>(0);
 
   useEffect(() => {
     const api = getTribunalApi();
     return api.onMapProgress((ev) => {
-      setProgress({ done: ev.done, total: ev.total });
+      setProgress(ev);
     });
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (tickRef.current != null) window.clearInterval(tickRef.current);
+    };
+  }, []);
+
+  function stopClock() {
+    if (tickRef.current != null) {
+      window.clearInterval(tickRef.current);
+      tickRef.current = null;
+    }
+  }
+
+  function startClock() {
+    stopClock();
+    t0Ref.current = performance.now();
+    setElapsedMs(0);
+    tickRef.current = window.setInterval(() => {
+      setElapsedMs(Math.round(performance.now() - t0Ref.current));
+    }, 100);
+  }
 
   function runMap() {
     setError(null);
     setCases([]);
     setMeta(null);
     setStarted(true);
-    setProgress({ done: 0, total: 0 });
+    setProgress({
+      phase: "scanning",
+      done: 0,
+      total: 0,
+      label: "Escaneando carpeta del boletín…",
+    });
+    startClock();
     startTransition(async () => {
       try {
         const result = await getTribunalApi().mapBoletinFolder(folderPath);
+        stopClock();
         if (!result.ok) {
           setError(result.error);
+          setProgress({
+            phase: "done",
+            done: 0,
+            total: 0,
+            label: "Mapeo interrumpido",
+          });
           return;
         }
+        setElapsedMs(result.durationMs);
         setCases(result.cases);
         setMeta({ pdfCount: result.pdfCount, durationMs: result.durationMs });
+        setProgress((prev) => ({
+          phase: "done",
+          done: result.pdfCount,
+          total: result.pdfCount,
+          label: `Mapeo listo en ${(result.durationMs / 1000).toFixed(1)}s`,
+          workerCount: prev.workerCount,
+        }));
       } catch (err) {
+        stopClock();
         setError(err instanceof Error ? err.message : String(err));
       }
     });
@@ -56,13 +107,14 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
   }, []);
 
   const mappedOk = cases.filter((c) => c.person || c.homeClub).length;
+  const running = pending || progress.phase !== "done";
 
   return (
     <section className="stage-select stage-map" aria-labelledby="stage2-title">
       <h2 id="stage2-title">Mapeo de alta velocidad</h2>
       <p className="lede">
-        Workers Node parsean los PDF en paralelo y extraen local, visitante,
-        infractor y rol.
+        Workers locales en paralelo (CPU/RAM de esta máquina). Sin Drive ni
+        red: extracción COMET + emparejado CASO/INFORME.
       </p>
       <p className="folder-path">{folderPath}</p>
 
@@ -89,13 +141,23 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
         ) : null}
       </div>
 
-      {pending || progress.total > 0 ? (
+      {started ? (
+        <MapBusy
+          label={progress.label}
+          done={progress.done}
+          total={progress.total}
+          elapsedMs={meta?.durationMs ?? elapsedMs}
+          workerCount={progress.workerCount}
+          running={running && !meta}
+        />
+      ) : null}
+
+      {meta && !pending ? (
         <p className="status-msg" data-tone="ok">
-          {progress.total > 0
-            ? `Progreso: ${progress.done} / ${progress.total} PDF`
-            : "Preparando workers…"}
-          {meta
-            ? ` · ${meta.pdfCount} PDF · ${(meta.durationMs / 1000).toFixed(1)}s · ${mappedOk} casos con datos`
+          Tiempo total: {(meta.durationMs / 1000).toFixed(2)}s · {meta.pdfCount}{" "}
+          PDF · {mappedOk} casos con datos
+          {progress.workerCount
+            ? ` · ${progress.workerCount} workers en paralelo`
             : null}
         </p>
       ) : null}
