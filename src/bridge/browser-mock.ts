@@ -1,6 +1,10 @@
 import type { TribunalApi } from "../../electron/preload";
 import type { BoletinFileEntry } from "../../electron/ipc/channels";
 import type { MappedCase, MapProgressEvent } from "../../shared/map/types";
+import type {
+  AuditedCase,
+  AuditProgressEvent,
+} from "../../shared/ai/audit-types";
 
 const DEMO_FOLDER = "/demo/boletin-preview";
 
@@ -54,7 +58,8 @@ const DEMO_CASES: MappedCase[] = [
 export function installBrowserMock(): void {
   if (typeof window === "undefined" || window.tribunal) return;
 
-  const progressListeners = new Set<(ev: MapProgressEvent) => void>();
+  const mapProgressListeners = new Set<(ev: MapProgressEvent) => void>();
+  const auditProgressListeners = new Set<(ev: AuditProgressEvent) => void>();
 
   const api: TribunalApi = {
     selectBoletinFolder: async () => ({
@@ -86,12 +91,12 @@ export function installBrowserMock(): void {
         },
       ];
       for (const ev of phases) {
-        for (const cb of progressListeners) cb(ev);
+        for (const cb of mapProgressListeners) cb(ev);
         await new Promise((r) => setTimeout(r, 80));
       }
       for (let done = 1; done <= total; done++) {
         const path = DEMO_FILES[done]?.absolutePath;
-        for (const cb of progressListeners) {
+        for (const cb of mapProgressListeners) {
           cb({
             phase: "mapping",
             done: done - 1,
@@ -102,7 +107,7 @@ export function installBrowserMock(): void {
           });
         }
         await new Promise((r) => setTimeout(r, 140));
-        for (const cb of progressListeners) {
+        for (const cb of mapProgressListeners) {
           cb({
             phase: "mapping",
             done,
@@ -113,7 +118,7 @@ export function installBrowserMock(): void {
           });
         }
       }
-      for (const cb of progressListeners) {
+      for (const cb of mapProgressListeners) {
         cb({
           phase: "merging",
           done: total,
@@ -131,9 +136,80 @@ export function installBrowserMock(): void {
       };
     },
     onMapProgress: (cb) => {
-      progressListeners.add(cb);
+      mapProgressListeners.add(cb);
       return () => {
-        progressListeners.delete(cb);
+        mapProgressListeners.delete(cb);
+      };
+    },
+    auditMappedCases: async (cases) => {
+      const total = cases.length || 1;
+      for (const cb of auditProgressListeners) {
+        cb({
+          done: 0,
+          total,
+          label: `Auditando mapeo con Gemini (${total} casos)…`,
+        });
+      }
+      await new Promise((r) => setTimeout(r, 120));
+      for (let done = 1; done <= total; done++) {
+        const c = cases[done - 1] ?? DEMO_CASES[0]!;
+        for (const cb of auditProgressListeners) {
+          cb({
+            done: done - 1,
+            total,
+            label: `Revisando · ${c.folderName}`,
+            currentCaseId: c.id,
+          });
+        }
+        await new Promise((r) => setTimeout(r, 180));
+        for (const cb of auditProgressListeners) {
+          cb({
+            done,
+            total,
+            label: `Auditado ${done}/${total} · ${c.folderName}`,
+            currentCaseId: c.id,
+          });
+        }
+      }
+
+      const audited: AuditedCase[] = (cases.length > 0 ? cases : DEMO_CASES).map(
+        (c) => {
+          // Demo: corrige discordancia de género Jugador → Jugadora
+          if (c.role?.toLowerCase() === "jugador") {
+            return {
+              ...c,
+              role: "Jugadora",
+              engine: "audited" as const,
+              auditNotes: ['rol: "Jugador" → "Jugadora" (género)'],
+              auditModel: "preview-mock",
+              correctionsApplied: true,
+            };
+          }
+          return {
+            ...c,
+            engine: "classical" as const,
+            auditNotes: [],
+            auditModel: "preview-mock",
+            correctionsApplied: false,
+          };
+        },
+      );
+
+      const correctedCount = audited.filter((c) => c.correctionsApplied).length;
+      const durationMs = 480;
+      for (const cb of auditProgressListeners) {
+        cb({
+          done: total,
+          total,
+          label: `Auditoría lista en 0.5s · ${correctedCount} corrección(es)`,
+        });
+      }
+      return { ok: true, cases: audited, durationMs, correctedCount };
+    },
+    onAuditProgress: (cb) => {
+      auditProgressListeners.add(cb);
+      return () => {
+        auditProgressListeners.delete(cb);
       };
     },
   };

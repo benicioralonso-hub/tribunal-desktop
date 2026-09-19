@@ -3,6 +3,8 @@ export const IPC = {
   LIST_BOLETIN_FILES: "stage1:list-boletin-files",
   MAP_BOLETIN_FOLDER: "stage2:map-boletin-folder",
   MAP_PROGRESS: "stage2:map-progress",
+  AUDIT_MAPPED_CASES: "stage3:audit-mapped-cases",
+  AUDIT_PROGRESS: "stage3:audit-progress",
 } as const;
 
 export type BoletinFileEntry = {
@@ -23,3 +25,9 @@ export type {
   MapFolderResult,
   MapProgressEvent,
 } from "../../shared/map/types";
+
+export type {
+  AuditedCase,
+  AuditCasesResult,
+  AuditProgressEvent,
+} from "../../shared/ai/audit-types";

@@ -14,7 +14,7 @@ export type MappedCase = {
   matchDate: string | null;
   competition: string | null;
   confidence: number;
-  engine: "classical";
+  engine: "classical" | "audited";
   error?: string;
 };
 

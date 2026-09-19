@@ -5,6 +5,8 @@ type MapBusyProps = {
   elapsedMs: number;
   workerCount?: number;
   running: boolean;
+  /** Unidad en la meta (default PDF) */
+  unitLabel?: string;
 };
 
 function formatElapsed(ms: number): string {
@@ -23,6 +25,7 @@ export function MapBusy({
   elapsedMs,
   workerCount,
   running,
+  unitLabel = "PDF",
 }: MapBusyProps) {
   const pct = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
 
@@ -41,7 +44,7 @@ export function MapBusy({
           <p className="map-busy-meta">
             {total > 0 ? (
               <>
-                {done} / {total} PDF · {pct}%
+                {done} / {total} {unitLabel} · {pct}%
               </>
             ) : (
               "Preparando…"

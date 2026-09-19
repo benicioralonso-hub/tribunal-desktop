@@ -4,6 +4,9 @@ import {
   type SelectBoletinResult,
   type MapFolderResult,
   type MapProgressEvent,
+  type AuditCasesResult,
+  type AuditProgressEvent,
+  type MappedCase,
 } from "./ipc/channels";
 
 const tribunalApi = {
@@ -18,6 +21,16 @@ const tribunalApi = {
       cb(payload);
     ipcRenderer.on(IPC.MAP_PROGRESS, listener);
     return () => ipcRenderer.removeListener(IPC.MAP_PROGRESS, listener);
+  },
+  auditMappedCases: (cases: MappedCase[]): Promise<AuditCasesResult> =>
+    ipcRenderer.invoke(IPC.AUDIT_MAPPED_CASES, cases),
+  onAuditProgress: (cb: (ev: AuditProgressEvent) => void): (() => void) => {
+    const listener = (
+      _: Electron.IpcRendererEvent,
+      payload: AuditProgressEvent,
+    ) => cb(payload);
+    ipcRenderer.on(IPC.AUDIT_PROGRESS, listener);
+    return () => ipcRenderer.removeListener(IPC.AUDIT_PROGRESS, listener);
   },
 };
 
