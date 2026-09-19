@@ -24,5 +24,8 @@ Desktop.ini
 # Electron
 *.asar
 
+# Local test artifacts
+tmp/
+
 # OneDrive / sync noise (si clonás dentro de una carpeta sincronizada)
 ~$*
