@@ -22,7 +22,7 @@ export function matchLeafFromName(
 ): string {
   const n = normalizePathToken(folderName);
   if (n && !isInformesFolderName(folderName) && !/^casos?$/i.test(n)) {
-    return n.replace(/(?:[,;\s\-–—])+\d{4,6}(?:[./]\d+)?\s*$/, "").trim() || n;
+    return n.replace(/(?:[,;\s\-–—])+\d{2,6}(?:[./]\d+)?\s*$/, "").trim() || n;
   }
   const stem = String(fileName || "")
     .replace(/\.pdf$/i, "")

@@ -1,11 +1,22 @@
 export type MappedPdfKind = "caso" | "informe" | "otro";
 
+export type FalloDraft = {
+  /** Título del fallo (clubs, fecha, expediente). */
+  title: string;
+  /** Cuerpo: VISTO… + RESUELVE… */
+  body: string;
+  /** title + body listos para UI / exportación. */
+  fullText: string;
+};
+
 export type MappedCase = {
   id: string;
   folderPath: string;
   folderName: string;
   casoPdfPath: string | null;
   informePdfPath: string | null;
+  /** Expediente extraído del nombre de carpeta de partido. */
+  expediente: string | null;
   homeClub: string | null;
   awayClub: string | null;
   person: string | null;
@@ -15,6 +26,10 @@ export type MappedCase = {
   competition: string | null;
   confidence: number;
   engine: "classical" | "audited";
+  /** p.ej. "Alerta: este informe no tiene caso" */
+  warning: string | null;
+  /** Borrador del fallo generado al mapear. */
+  draft: FalloDraft | null;
   error?: string;
 };
 
@@ -38,7 +53,6 @@ export type MapProgressEvent = {
   /** Cantidad de workers del pool */
   workerCount?: number;
 };
-
 
 export type MapFolderResult =
   | { ok: true; cases: MappedCase[]; pdfCount: number; durationMs: number }

@@ -16,6 +16,7 @@ const base: MappedCase = {
   folderName: "Partido",
   casoPdfPath: null,
   informePdfPath: null,
+  expediente: "12.345",
   homeClub: "Club Atlético Demo",
   awayClub: "Visitante",
   person: "Camila Rosario Bianchini",
@@ -25,6 +26,8 @@ const base: MappedCase = {
   competition: "Torneo",
   confidence: 0.9,
   engine: "classical",
+  warning: null,
+  draft: null,
 };
 
 function assert(cond: unknown, msg: string): asserts cond {

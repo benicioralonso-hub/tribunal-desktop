@@ -1,6 +1,13 @@
 import { useEffect, useRef, useState, useTransition } from "react";
 import { getTribunalApi } from "../bridge/api";
 import { MapBusy } from "../components/MapBusy";
+import {
+  DraftMainPanel,
+} from "../components/map/DraftMainPanel";
+import {
+  MatchSidebar,
+  groupCasesByMatch,
+} from "../components/map/MatchSidebar";
 import type { MappedCase, MapProgressEvent } from "../../shared/map/types";
 
 type Props = {
@@ -12,6 +19,7 @@ type Props = {
 export function StageMap({ folderPath, onBack, onContinue }: Props) {
   const [pending, startTransition] = useTransition();
   const [cases, setCases] = useState<MappedCase[]>([]);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<MapProgressEvent>({
     phase: "scanning",
@@ -60,6 +68,7 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
   function runMap() {
     setError(null);
     setCases([]);
+    setSelectedId(null);
     setMeta(null);
     setStarted(true);
     setProgress({
@@ -85,6 +94,7 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
         }
         setElapsedMs(result.durationMs);
         setCases(result.cases);
+        setSelectedId(result.cases[0]?.id ?? null);
         setMeta({ pdfCount: result.pdfCount, durationMs: result.durationMs });
         setProgress((prev) => ({
           phase: "done",
@@ -106,39 +116,69 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const groups = groupCasesByMatch(cases);
+  const selected = cases.find((c) => c.id === selectedId) ?? null;
   const mappedOk = cases.filter((c) => c.person || c.homeClub).length;
+  const warnCount = cases.filter((c) => c.warning).length;
   const running = pending || progress.phase !== "done";
+
+  function onDraftChange(fullText: string) {
+    if (!selectedId) return;
+    setCases((prev) =>
+      prev.map((c) => {
+        if (c.id !== selectedId) return c;
+        const title = c.draft?.title ?? c.folderName;
+        const body = fullText.startsWith(title)
+          ? fullText.slice(title.length).replace(/^\n+/, "")
+          : fullText;
+        return {
+          ...c,
+          draft: {
+            title,
+            body,
+            fullText,
+          },
+        };
+      }),
+    );
+  }
 
   return (
     <section className="stage-select stage-map" aria-labelledby="stage2-title">
-      <h2 id="stage2-title">Mapeo de alta velocidad</h2>
-      <p className="lede">
-        Workers locales en paralelo (CPU/RAM de esta máquina). Sin Drive ni
-        red: extracción COMET + emparejado CASO/INFORME.
-      </p>
-      <p className="folder-path">{folderPath}</p>
+      <div className="stage-map-head">
+        <h2 id="stage2-title">Mapeo y borradores</h2>
+        <p className="lede">
+          Extracción local en paralelo y redacción inmediata del fallo por
+          partido. Revisá, editá y continuá a auditoría.
+        </p>
+        <p className="folder-path">{folderPath}</p>
 
-      <div className="cta-row">
-        <button
-          type="button"
-          className="btn-primary"
-          onClick={runMap}
-          disabled={pending}
-        >
-          {pending ? "Mapeando…" : started ? "Volver a mapear" : "Iniciar mapeo"}
-        </button>
-        <button type="button" className="btn-secondary" onClick={onBack}>
-          Volver
-        </button>
-        {cases.length > 0 ? (
+        <div className="cta-row">
           <button
             type="button"
-            className="btn-secondary"
-            onClick={() => onContinue(cases)}
+            className="btn-primary"
+            onClick={runMap}
+            disabled={pending}
           >
-            Continuar a auditoría
+            {pending
+              ? "Mapeando…"
+              : started
+                ? "Volver a mapear"
+                : "Iniciar mapeo"}
           </button>
-        ) : null}
+          <button type="button" className="btn-secondary" onClick={onBack}>
+            Volver
+          </button>
+          {cases.length > 0 ? (
+            <button
+              type="button"
+              className="btn-secondary"
+              onClick={() => onContinue(cases)}
+            >
+              Continuar a auditoría
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {started ? (
@@ -154,10 +194,11 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
 
       {meta && !pending ? (
         <p className="status-msg" data-tone="ok">
-          Tiempo total: {(meta.durationMs / 1000).toFixed(2)}s · {meta.pdfCount}{" "}
-          PDF · {mappedOk} casos con datos
+          {(meta.durationMs / 1000).toFixed(2)}s · {meta.pdfCount} PDF ·{" "}
+          {mappedOk} con datos
+          {warnCount > 0 ? ` · ${warnCount} alerta(s)` : null}
           {progress.workerCount
-            ? ` · ${progress.workerCount} workers en paralelo`
+            ? ` · ${progress.workerCount} workers`
             : null}
         </p>
       ) : null}
@@ -165,35 +206,16 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
       {error ? <p className="status-msg">{error}</p> : null}
 
       {cases.length > 0 ? (
-        <div className="map-table-wrap">
-          <table className="map-table">
-            <thead>
-              <tr>
-                <th>Partido / carpeta</th>
-                <th>Local</th>
-                <th>Visitante</th>
-                <th>Infractor</th>
-                <th>Rol</th>
-                <th>Club</th>
-                <th>Fecha</th>
-                <th>%</th>
-              </tr>
-            </thead>
-            <tbody>
-              {cases.map((c) => (
-                <tr key={c.id} data-error={Boolean(c.error)}>
-                  <td title={c.folderPath}>{c.folderName}</td>
-                  <td>{c.homeClub ?? "—"}</td>
-                  <td>{c.awayClub ?? "—"}</td>
-                  <td>{c.person ?? (c.error ? `Error: ${c.error}` : "—")}</td>
-                  <td>{c.role ?? "—"}</td>
-                  <td>{c.club ?? "—"}</td>
-                  <td>{c.matchDate ?? "—"}</td>
-                  <td>{c.confidence}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="stage-map-review">
+          <MatchSidebar
+            groups={groups}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+          />
+          <DraftMainPanel
+            caseItem={selected}
+            onDraftChange={onDraftChange}
+          />
         </div>
       ) : null}
     </section>

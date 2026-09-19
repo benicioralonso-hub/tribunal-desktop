@@ -13,6 +13,7 @@ const cases: AuditedCase[] = [
     folderName: "Partido-Demo",
     casoPdfPath: null,
     informePdfPath: null,
+    expediente: "99.001",
     homeClub: "Local FC",
     awayClub: "Visitante FC",
     person: "Camila Rosario Bianchini",
@@ -22,6 +23,13 @@ const cases: AuditedCase[] = [
     competition: "Torneo",
     confidence: 0.9,
     engine: "audited",
+    warning: null,
+    draft: {
+      title: "Local FC c. Visitante FC — 15/03/2026 — EXPTE. N° 99.001",
+      body: "VISTO el expediente Nº 99.001…\n\nEL TRIBUNAL DE DISCIPLINA RESUELVE:\n\nSuspender a Camila Rosario Bianchini.",
+      fullText:
+        "Local FC c. Visitante FC — 15/03/2026 — EXPTE. N° 99.001\n\nVISTO el expediente Nº 99.001…\n\nEL TRIBUNAL DE DISCIPLINA RESUELVE:\n\nSuspender a Camila Rosario Bianchini.",
+    },
     auditNotes: ['rol: "Jugador" → "Jugadora"'],
     correctionsApplied: true,
   },

@@ -136,6 +136,13 @@ export function buildBoletinDocument(cases: AuditedCase[]): Document {
     const titleBits = [c.folderName, c.person].filter(Boolean).join(" — ");
     children.push(titleParagraph(titleBits || "Caso"));
 
+    if (c.expediente) {
+      children.push(bodyParagraph(`Expediente: ${c.expediente}`, { after: 40 }));
+    }
+    if (c.warning) {
+      children.push(bodyParagraph(`⚠️ ${c.warning}`, { after: 40, bold: true }));
+    }
+
     const lines = [
       `Local: ${c.homeClub ?? "—"}`,
       `Visitante: ${c.awayClub ?? "—"}`,
@@ -150,6 +157,14 @@ export function buildBoletinDocument(cases: AuditedCase[]): Document {
     for (const line of lines) {
       children.push(bodyParagraph(line, { after: 40 }));
     }
+
+    if (c.draft?.fullText) {
+      children.push(titleParagraph("Borrador del fallo"));
+      for (const para of c.draft.fullText.split(/\n+/).filter(Boolean)) {
+        children.push(bodyParagraph(para, { after: 60 }));
+      }
+    }
+
     if (c.auditNotes.length > 0) {
       children.push(
         bodyParagraph(`Notas de auditoría: ${c.auditNotes.join(" · ")}`, {

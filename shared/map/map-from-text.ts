@@ -53,6 +53,12 @@ export function mapFactsFromText(
   };
 }
 
+/**
+ * Preferencias de fuente:
+ * - INFORME → local / visitante / fecha / disciplina
+ * - CASO → infractor / rol / club
+ * - Carpeta → fallback de clubs (+ expediente aparte)
+ */
 export function mergeCasoInforme(
   caso: MapFacts | null,
   informe: MapFacts | null,
@@ -60,15 +66,15 @@ export function mergeCasoInforme(
 ): Omit<MapFacts, "kind"> {
   const folder = parseMatchFolderName(folderName);
   return {
-    person: caso?.person || informe?.person || null,
-    club: caso?.club || informe?.club || null,
-    role: caso?.role || informe?.role || null,
+    person: caso?.person || null,
+    club: caso?.club || null,
+    role: caso?.role || null,
     homeClub:
-      caso?.homeClub || informe?.homeClub || folder.homeClub || null,
+      informe?.homeClub || caso?.homeClub || folder.homeClub || null,
     awayClub:
-      caso?.awayClub || informe?.awayClub || folder.awayClub || null,
-    matchDate: caso?.matchDate || informe?.matchDate || null,
-    competition: caso?.competition || informe?.competition || null,
+      informe?.awayClub || caso?.awayClub || folder.awayClub || null,
+    matchDate: informe?.matchDate || caso?.matchDate || null,
+    competition: informe?.competition || caso?.competition || null,
     confidence: Math.max(caso?.confidence ?? 0, informe?.confidence ?? 0),
   };
 }

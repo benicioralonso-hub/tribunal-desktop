@@ -14,12 +14,12 @@ type WizardShellProps = {
 
 export function WizardShell({ stage, children }: WizardShellProps) {
   return (
-    <div className="wizard-shell">
+    <div className="wizard-shell" data-stage={stage}>
       <header className="wizard-brand">
         <h1>Tribunal Disciplinario</h1>
         <p>
-          Automatizá, mapeá y auditá resoluciones en tu disco local. Sin Drive.
-          Sin nube de expedientes.
+          Automatizá, mapeá y redactá borradores de fallo en tu disco local. Sin
+          Drive. Sin nube de expedientes.
         </p>
         <nav className="wizard-steps" aria-label="Estadíos">
           {STEPS.map((step) => (

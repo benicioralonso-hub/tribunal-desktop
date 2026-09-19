@@ -268,7 +268,7 @@ export function parseMatchFolderName(raw: string | null | undefined): {
   if (!raw) return { homeClub: null, awayClub: null, expedienteHint: null };
   let name = raw.trim();
   const expMatch = name.match(
-    /(?:^|[\s\-–—])(\d{4,6}(?:\.\d+)?)(?:\s+\d{3,4})?\s*$/,
+    /(?:^|[\s\-–—])(\d{2,6}(?:\.\d+)?)(?:\s+\d{3,4})?\s*$/,
   );
   const expedienteHint = expMatch?.[1] ?? null;
   if (expMatch) {
@@ -288,6 +288,25 @@ export function parseMatchFolderName(raw: string | null | undefined): {
     };
   }
   return { homeClub: null, awayClub: null, expedienteHint };
+}
+
+/**
+ * Carpeta de partido real (Local c. Visitante [exp]), no categoría
+ * (`4TA`, `0001`) ni contenedores (`Informes`, `Casos`).
+ */
+export function isMatchFolderName(raw: string | null | undefined): boolean {
+  if (!raw) return false;
+  const name = raw.trim();
+  if (!name) return false;
+  if (/^informes?$/i.test(name)) return false;
+  if (/^casos?$/i.test(name)) return false;
+  // Ordinales de categoría: 4TA, 3RA, 1RA, …
+  if (/^\d{1,2}(ra|ta|ma|va|na)\.?$/i.test(name)) return false;
+  // Carpetas numéricas tipo 0001–0014
+  if (/^\d{3,4}$/.test(name)) return false;
+
+  const parsed = parseMatchFolderName(name);
+  return Boolean(parsed.homeClub && parsed.awayClub);
 }
 
 export function looksLikeFilenameAsPerson(

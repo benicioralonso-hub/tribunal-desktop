@@ -1,19 +1,28 @@
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@500;600;700;800&display=swap");
+
 :root {
-  --ink: #ececec;
-  --muted: #a8b0b8;
-  --line: #454545;
-  --paper: #1e1e1e;
-  --white: #252526;
-  --surface-elevated: #2d2d30;
-  --surface-muted: #333333;
-  --sidebar-bg: #2d2d2d;
-  --sidebar-border: #4a4a4a;
-  --accent: #c5d9ea;
-  --warn-bg: #3a3428;
-  --warn-fg: #e8d8a8;
-  --ok-bg: #2a332a;
-  --ok-fg: #c8e6c8;
-  --font-display: "Segoe UI Variable Display", "Segoe UI", "Helvetica Neue",
-    sans-serif;
-  --font-body: "Segoe UI Variable Text", "Segoe UI", "Helvetica Neue", sans-serif;
+  --ink: #e8eef7;
+  --muted: #94a3b8;
+  --line: rgba(255, 255, 255, 0.1);
+  --paper: #020617;
+  --paper-mid: #0f172a;
+  --white: rgba(15, 23, 42, 0.55);
+  --surface-elevated: rgba(30, 41, 59, 0.45);
+  --surface-muted: rgba(15, 23, 42, 0.72);
+  --sidebar-bg: rgba(15, 23, 42, 0.65);
+  --sidebar-border: rgba(255, 255, 255, 0.1);
+  --glass: rgba(15, 23, 42, 0.55);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --accent: #7dd3fc;
+  --accent-strong: #38bdf8;
+  --warn-bg: rgba(120, 53, 15, 0.35);
+  --warn-fg: #fbbf24;
+  --warn-glow: rgba(251, 191, 36, 0.45);
+  --ok-bg: rgba(20, 83, 45, 0.35);
+  --ok-fg: #86efac;
+  --font-display: "Syne", "Segoe UI", sans-serif;
+  --font-body: "DM Sans", "Segoe UI", sans-serif;
+  --blur: blur(16px);
+  --radius: 14px;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
 }
