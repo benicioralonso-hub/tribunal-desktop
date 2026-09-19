@@ -1,6 +1,5 @@
 import { ipcMain, dialog, BrowserWindow } from "electron";
 import { writeFile } from "node:fs/promises";
-import path from "node:path";
 import { IPC, type ExportDocxResult } from "./channels";
 import { buildBoletinDocxBuffer } from "../../shared/docx/build-boletin-docx";
 import type { AuditedCase } from "../../shared/ai/audit-types";
