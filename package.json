@@ -11,8 +11,9 @@
     "preview": "electron-vite preview",
     "preview:ui": "vite --config vite.preview.config.ts",
     "test:map": "npx --yes tsx shared/map/__tests__/bianchini.test.ts",
-    "postinstall": "node node_modules/electron/install.js",
-    "electron:install": "node node_modules/electron/install.js",
+    "postinstall": "node scripts/ensure-electron.mjs",
+    "electron:install": "node scripts/ensure-electron.mjs",
+    "electron:unpack-zip": "node scripts/unpack-electron-zip.mjs",
     "start": "electron-vite preview"
   },
   "dependencies": {
