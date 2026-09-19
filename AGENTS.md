@@ -40,9 +40,11 @@ Eres un auditor estricto. NO reescribas el fallo. Tu única tarea es buscar erro
 
 - Walk recursivo de PDFs bajo la carpeta del boletín
 - Pool = `os.cpus().length`
-- Texto: `shared/pdf/extract-text.ts` (unpdf)
-- Hechos: `shared/map/map-from-text.ts` (Infractor, Club, Partido local/visitante, Tipo de infractor, fecha)
-- Agrupa CASO + INFORME por carpeta de partido
+- Texto: `shared/pdf/extract-text.ts` (unpdf + fallbacks title/ASCII + `trimPdfTextForRemap`)
+- Hechos: `shared/map/comet-extract.ts` → `map-from-text.ts`
+  (Infractor, Club, Partido local/visitante, Tipo de infractor, fecha)
+- Empareja CASO + INFORME por carpeta; INFORMEs bajo `Informes/` por leaf de partido
+- Fixture: `npm run test:map` (Bianchini)
 
 ## Origen del dominio
 
