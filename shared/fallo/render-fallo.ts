@@ -123,6 +123,20 @@ export const SANCTION_KIND_LABEL: Record<SanctionKind, string> = {
   otra: "Texto libre",
 };
 
+/**
+ * Opciones de «Tipo de texto» para tipificación manual (como en tribunal-app).
+ * Excluye `suspension_provisional` (alias deprecado de medida_autorizada).
+ * Incluye `doble_amonestacion` para poder elegirlo a mano.
+ */
+export const MANUAL_TEXT_TYPE_OPTIONS: Array<{
+  kind: SanctionKind;
+  label: string;
+}> = (
+  Object.entries(SANCTION_KIND_LABEL) as Array<[SanctionKind, string]>
+)
+  .filter(([value]) => value !== "suspension_provisional")
+  .map(([kind, label]) => ({ kind, label }));
+
 const MONTHS_ES_TITLE = [
   "Enero",
   "Febrero",

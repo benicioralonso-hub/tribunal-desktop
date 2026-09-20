@@ -1,28 +1,76 @@
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Syne:wght@500;600;700;800&display=swap");
 
 :root {
-  --ink: #e8eef7;
-  --muted: #94a3b8;
-  --line: rgba(255, 255, 255, 0.1);
-  --paper: #020617;
-  --paper-mid: #0f172a;
-  --white: rgba(15, 23, 42, 0.55);
-  --surface-elevated: rgba(30, 41, 59, 0.45);
-  --surface-muted: rgba(15, 23, 42, 0.72);
-  --sidebar-bg: rgba(15, 23, 42, 0.65);
-  --sidebar-border: rgba(255, 255, 255, 0.1);
-  --glass: rgba(15, 23, 42, 0.55);
-  --glass-border: rgba(255, 255, 255, 0.1);
+  /* ——— Ink / surface ——— */
+  --ink: #f4f7fb;
+  --ink-soft: rgba(244, 247, 251, 0.92);
+  --muted: rgba(186, 198, 214, 0.88);
+  --paper: #06090f;
+  --paper-mid: #0a101c;
+
+  /* ——— Liquid glass material ——— */
+  --glass: rgba(15, 23, 42, 0.34);
+  --glass-strong: rgba(15, 23, 42, 0.48);
+  --glass-soft: rgba(255, 255, 255, 0.06);
+  --glass-border: rgba(255, 255, 255, 0.18);
+  --glass-border-strong: rgba(255, 255, 255, 0.3);
+  --glass-highlight: rgba(255, 255, 255, 0.5);
+  --glass-shadow: rgba(0, 0, 0, 0.32);
+  --blur: blur(24px) saturate(150%) brightness(1.1);
+  --glass-inset:
+    inset 0 1px 1px rgba(255, 255, 255, 0.45),
+    inset 0 -1px 1px rgba(0, 0, 0, 0.14);
+  --glass-drop: 0 14px 36px rgba(0, 0, 0, 0.32);
+  --glass-elevated:
+    var(--glass-inset),
+    var(--glass-drop);
+
+  /* ——— Compat aliases ——— */
+  --line: rgba(255, 255, 255, 0.12);
+  --white: var(--glass);
+  --surface-elevated: rgba(30, 41, 59, 0.4);
+  --surface-muted: rgba(15, 23, 42, 0.55);
+  --sidebar-bg: var(--glass);
+  --sidebar-border: var(--glass-border);
+
+  /* ——— Accent (sky / teal, no purple) ——— */
   --accent: #7dd3fc;
   --accent-strong: #38bdf8;
-  --warn-bg: rgba(120, 53, 15, 0.35);
+  --accent-glow: rgba(56, 189, 248, 0.35);
+  --accent-soft: rgba(56, 189, 248, 0.16);
+
+  --warn-bg: rgba(120, 53, 15, 0.4);
   --warn-fg: #fbbf24;
-  --warn-glow: rgba(251, 191, 36, 0.45);
-  --ok-bg: rgba(20, 83, 45, 0.35);
+  --warn-glow: rgba(251, 191, 36, 0.4);
+  --ok-bg: rgba(20, 83, 45, 0.4);
   --ok-fg: #86efac;
+
+  /* ——— Mesh blob colors (analogous; visible under glass) ——— */
+  --blob-a: rgba(56, 189, 248, 0.42);
+  --blob-b: rgba(45, 212, 191, 0.32);
+  --blob-c: rgba(125, 211, 252, 0.22);
+  --blob-d: rgba(14, 165, 233, 0.28);
+
+  /* ——— Typography ——— */
   --font-display: "Syne", "Segoe UI", sans-serif;
   --font-body: "DM Sans", "Segoe UI", sans-serif;
-  --blur: blur(16px);
-  --radius: 14px;
-  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+
+  /* ——— Squircles ——— */
+  --radius-panel: 22px;
+  --radius-card: 14px;
+  --radius-control: 12px;
+  --radius: var(--radius-panel);
+
+  /* ——— Motion ——— */
+  --ease: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-spring: cubic-bezier(0.25, 1, 0.5, 1);
+  --duration: 320ms;
+  --duration-fast: 200ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --duration: 1ms;
+    --duration-fast: 1ms;
+  }
 }

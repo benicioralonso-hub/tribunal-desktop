@@ -135,7 +135,10 @@ export function StageAudit({ cases, onBack, onContinue }: Props) {
   const corrected = audited.filter((c) => c.correctionsApplied);
 
   return (
-    <section className="stage-select stage-audit" aria-labelledby="stage3-title">
+    <section
+      className="stage-select stage-audit glass-panel"
+      aria-labelledby="stage3-title"
+    >
       <h2 id="stage3-title">Auditoría IA</h2>
       <p className="lede">
         Segunda instancia con Gemini sobre {cases.length} caso(s) mapeados: solo

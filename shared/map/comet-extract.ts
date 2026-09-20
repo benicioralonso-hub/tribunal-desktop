@@ -9,6 +9,7 @@ import {
   formatClubName,
   formatMatchDate,
   formatPersonName,
+  isCometPageHeader,
   isGenericStaffTipoLabel,
   isJunkField,
   parseMatchFolderName,
@@ -423,6 +424,7 @@ function looksLikeClubCell(raw: string): boolean {
   if (!v || v.length < 3 || v.length > 80) return false;
   if (TABLE_LABEL_ONLY_RE.test(v) || ROLE_VALUE_RE.test(v)) return false;
   if (/^clubs?$/i.test(v)) return false;
+  if (isCometPageHeader(v)) return false;
   if (looksLikeCometPersonCell(v)) return false;
   if (looksLikeClubMatchupValue(v)) return false;
   if (/^\d{1,4}$/.test(v)) return false;
@@ -701,7 +703,7 @@ function collectSignals(text: string): string[] {
   const signals: string[] = [];
   const lower = text.toLowerCase();
   if (
-    /doble\s+(tarjeta\s+)?amarilla|second\s+yellow|doble amonestaci/i.test(
+    /doble\s+(tarjeta\s+)?amarilla|second\s+yellow|doble amonestaci|dos\s+tarjetas\s+amarillas/i.test(
       lower,
     )
   ) {
@@ -842,6 +844,8 @@ export function extractTipoEventoRaw(text: string): string | null {
   const normalized = String(text || "").replace(/\u0000/g, " ");
   if (normalized.trim().length < 20) return null;
 
+  // “Descripción de infracción” completo — no solo “Descripción” + “:”
+  // (en texto pegado: “…Violenta Descripción de infracción: …”).
   const stopLabel =
     "Club|Competici[oó]n|Equipo|Local|Visitante|Fecha|Hora|Impreso|Descripci[oó]n(?:\\s+de(?:\\s+la)?\\s+infracci[oó]n)?|Motivo|N[uú]m|N[uú]mero|Decisi[oó]n|Partido|Categor[ií]a|Divisi[oó]n|Infractor|Entrenador|Oficial|Expulsado|Alineaciones|Tipo\\s+de\\s+infractor";
 
@@ -859,11 +863,13 @@ export function extractTipoEventoRaw(text: string): string | null {
     }
     if (ROLE_VALUE_RE.test(v)) return false;
     if (looksLikeCometPersonCell(v)) return false;
+    // Prefijos COMET típicos del primer select.
     if (
       /^(tarjeta\s+(roja|amarilla)|expulsi[oó]n|amonestaci[oó]n)\b/i.test(v)
     ) {
       return true;
     }
+    // Causal suelto (segunda línea).
     if (
       /conducta|juego\s+brusco|malograr|retardar|lenguaje|infracci|antideportiv|banco|oportunidad|violencia|ofensiv|obscen/i.test(
         v,
@@ -884,6 +890,16 @@ export function extractTipoEventoRaw(text: string): string | null {
         .replace(/[|•].*$/, ""),
     );
 
+  const joinTipoCausal = (parts: string[]): string | null => {
+    if (parts.length === 0) return null;
+    if (parts.length === 1) return stripTrailingDesc(parts[0]!);
+    const a = parts[0]!;
+    const b = parts[1]!;
+    if (/\s-\s/.test(a)) return stripTrailingDesc(a);
+    return stripTrailingDesc(`${a} - ${b}`);
+  };
+
+  // 1) Misma línea / texto corrido.
   const inline = normalized.match(
     new RegExp(
       `Tipo\\s+de\\s+evento\\s*[:\\-]?\\s*([^\\n]{3,320}?)(?=\\s+(?:${stopLabel})\\s*[:\\-]|\\n|$)`,
@@ -893,8 +909,65 @@ export function extractTipoEventoRaw(text: string): string | null {
   let value = inline?.[1] ? stripTrailingDesc(inline[1]) : "";
   if (value && !looksLikeEventoValue(value)) value = "";
 
+  const onlyTipo =
+    value &&
+    /^(tarjeta\s+(roja|amarilla)|expulsi[oó]n|amonestaci[oó]n)\b/i.test(value) &&
+    !/\s-\s/.test(value);
+
+  // 2) Líneas siguientes al label (interleaved o columnas apiladas).
+  if (!value || value.length < 8 || onlyTipo) {
+    const labelRe = /Tipo\s+de\s+evento\s*[:\-]?/gi;
+    let labelMatch: RegExpExecArray | null;
+    while ((labelMatch = labelRe.exec(normalized))) {
+      const rest = normalized.slice(labelMatch.index + labelMatch[0].length);
+      const lines = rest
+        .split(/\r?\n/)
+        .map((l) => cleanLine(l))
+        .filter(Boolean)
+        .slice(0, 24);
+      const parts: string[] = [];
+      for (const line of lines) {
+        // Labels apilados (Jasper): saltear, no cortar — los valores vienen después.
+        if (TABLE_LABEL_ONLY_RE.test(line)) continue;
+        if (
+          /^(Descripci[oó]n(?:\s+de(?:\s+la)?\s+infracci[oó]n)?|Motivo)\s*[:\-]?$/i.test(
+            line,
+          )
+        ) {
+          continue;
+        }
+        // Valor de descripción ya empezó: si aún no hay evento, seguir buscando;
+        // si ya juntamos tipo+causal, listo.
+        if (
+          /^Descripci[oó]n(?:\s+de(?:\s+la)?\s+infracci[oó]n)?\s*[:\-]/i.test(line)
+        ) {
+          if (parts.length) break;
+          continue;
+        }
+        if (!looksLikeEventoValue(line)) {
+          if (parts.length > 0) break;
+          continue;
+        }
+        parts.push(stripTrailingDesc(line));
+        if (parts.length === 1 && /\s-\s/.test(parts[0]!)) break;
+        if (parts.length >= 2) break;
+      }
+      const joined = joinTipoCausal(parts);
+      if (joined && looksLikeEventoValue(joined)) {
+        value = joined;
+        break;
+      }
+    }
+  }
+
+  // 3) Fallback global: línea con “Tarjeta/Expulsión - causal” cerca del label.
   if (!value || !looksLikeEventoValue(value)) {
-    const global = normalized.match(
+    const labelIdx = normalized.search(/Tipo\s+de\s+evento/i);
+    const window =
+      labelIdx >= 0
+        ? normalized.slice(Math.max(0, labelIdx), labelIdx + 2500)
+        : normalized.slice(0, 4000);
+    const global = window.match(
       /((?:Tarjeta\s+(?:roja|amarilla)|Expulsi[oó]n)\s*-\s*[^\n]{3,200})/i,
     );
     if (global?.[1]) {

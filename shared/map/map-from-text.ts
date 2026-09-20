@@ -18,6 +18,8 @@ export type MapFacts = {
   confidence: number;
   /** Señales COMET (p.ej. doble_amonestacion). */
   signals?: string[];
+  /** Valor crudo de «Tipo de evento» del PDF CASO. */
+  tipoEvento?: string | null;
 };
 
 export function classifyPdfText(text: string): "caso" | "informe" | "otro" {
@@ -53,6 +55,7 @@ export function mapFactsFromText(
     kind,
     confidence: comet.confidence,
     signals: comet.signals,
+    tipoEvento: comet.tipoEvento,
   };
 }
 
@@ -84,5 +87,6 @@ export function mergeCasoInforme(
       : informe?.signals?.length
         ? informe.signals
         : undefined,
+    tipoEvento: caso?.tipoEvento || informe?.tipoEvento || null,
   };
 }

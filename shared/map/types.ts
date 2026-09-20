@@ -19,6 +19,13 @@ export type MappedCase = {
   role: string | null;
   matchDate: string | null;
   competition: string | null;
+  /** Valor crudo de «Tipo de evento» del CASO. */
+  tipoEvento: string | null;
+  /**
+   * Carpeta raíz / categoría del boletín
+   * (p.ej. "0001 PRIMERA LPF") derivada de folderPath.
+   */
+  categoryRoot: string | null;
   confidence: number;
   engine: "classical" | "audited";
   /** p.ej. "Alerta: este informe no tiene caso" */

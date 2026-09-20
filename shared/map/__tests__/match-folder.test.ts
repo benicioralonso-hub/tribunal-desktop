@@ -35,6 +35,8 @@ assert.equal(isMatchFolderName("4TA"), false, "4TA no es partido");
 assert.equal(isMatchFolderName("3RA"), false);
 assert.equal(isMatchFolderName("0001"), false);
 assert.equal(isMatchFolderName("0014"), false);
+assert.equal(isMatchFolderName("0001 PRIMERA LPF"), false);
+assert.equal(isMatchFolderName("4TA DIVISION"), false);
 assert.equal(isMatchFolderName("Informes"), false);
 assert.equal(isMatchFolderName("Casos"), false);
 assert.equal(
@@ -143,14 +145,25 @@ assert.match(parsed.awayClub || "", /boca/i);
       caso1,
       okResult(
         caso1,
-        facts({ kind: "caso", person: "Juan Pérez", role: "jugador" }),
+        facts({
+          kind: "caso",
+          person: "Juan Pérez",
+          role: "jugador",
+          tipoEvento: "Tarjeta roja - Juego brusco grave",
+          signals: [],
+        }),
       ),
     ],
     [
       caso2,
       okResult(
         caso2,
-        facts({ kind: "caso", person: "Ana Gómez", role: "jugadora" }),
+        facts({
+          kind: "caso",
+          person: "Ana Gómez",
+          role: "jugadora",
+          signals: ["doble_amonestacion"],
+        }),
       ),
     ],
   ]);
@@ -160,6 +173,7 @@ assert.match(parsed.awayClub || "", /boca/i);
   assert.equal(cases[1]!.informePdfPath, informePath);
   assert.equal(cases[0]!.warning, null);
   assert.ok(cases[0]!.draft?.body.includes("Se suspende"));
+  assert.notEqual(cases[0]!.draft?.status, "sin_tipificar");
   assert.equal(cases[0]!.expediente, "12345");
   // Mismo borrador compartido (1 fallo, 2 resoluciones)
   assert.equal(cases[0]!.draft?.fullText, cases[1]!.draft?.fullText);

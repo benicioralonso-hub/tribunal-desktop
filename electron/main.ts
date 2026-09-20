@@ -6,6 +6,7 @@ import { registerStage1Ipc } from "./ipc/stage1-select";
 import { registerStage2Ipc } from "./ipc/stage2-map";
 import { registerStage3Ipc } from "./ipc/stage3-audit";
 import { registerStage4Ipc } from "./ipc/stage4-export";
+import { registerPdfViewerIpc } from "./ipc/stage-pdf";
 import { SECURE_WEB_PREFS } from "./security";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -44,6 +45,7 @@ app.whenReady().then(() => {
   registerStage2Ipc();
   registerStage3Ipc();
   registerStage4Ipc();
+  registerPdfViewerIpc();
   createWindow();
 
   app.on("activate", () => {

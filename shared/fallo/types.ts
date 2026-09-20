@@ -22,7 +22,8 @@ export type FalloDraftStatus =
   | "proposed"
   | "accepted"
   | "modified"
-  | "rejected";
+  | "rejected"
+  | "sin_tipificar";
 
 export type ResolutionItem = {
   order: number;

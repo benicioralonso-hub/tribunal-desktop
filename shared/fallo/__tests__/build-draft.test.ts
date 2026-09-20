@@ -74,13 +74,42 @@ const multi = buildFalloDraft({
   matchDate: "10/03/2026",
   competition: "1ra.",
   persons: [
-    { person: "A Uno", club: "Local", role: "jugador", partidos: 2 },
-    { person: "B Dos", club: "Visitante", role: "jugador", partidos: 1 },
+    {
+      person: "A Uno",
+      club: "Local",
+      role: "jugador",
+      tipoEvento: "Tarjeta roja - Juego brusco grave",
+    },
+    {
+      person: "B Dos",
+      club: "Visitante",
+      role: "jugador",
+      dobleAmonestacion: true,
+    },
   ],
 });
 assert.match(multi.fullText, /1°\)/);
 assert.match(multi.fullText, /2°\)/);
 assert.match(multi.body, /dos partidos/);
+assert.notEqual(multi.status, "sin_tipificar");
+
+const sinTip = buildFalloDraft({
+  expediente: "99001",
+  homeClub: "Local",
+  awayClub: "Visitante",
+  matchDate: "10/03/2026",
+  competition: null,
+  persons: [
+    {
+      person: "X",
+      club: "Local",
+      role: "jugador",
+      tipoEvento: "Agresión a árbitro",
+    },
+  ],
+});
+assert.equal(sinTip.status, "sin_tipificar");
+assert.match(sinTip.body, /Pendiente de tipificación manual/);
 
 const missing = buildFalloDraft({
   expediente: "77100",
