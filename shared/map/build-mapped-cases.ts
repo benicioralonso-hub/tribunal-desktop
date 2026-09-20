@@ -62,6 +62,7 @@ function buildSharedDraft(opts: {
     club: string | null;
     role: string | null;
     signals?: string[];
+    tipoEvento?: string | null;
     caseId?: string;
   }>;
   missingCaso: boolean;
@@ -79,6 +80,8 @@ function buildSharedDraft(opts: {
       club: p.club,
       role: p.role,
       caseId: p.caseId,
+      tipoEvento: p.tipoEvento,
+      signals: p.signals,
       dobleAmonestacion: Boolean(
         p.signals?.includes("doble_amonestacion"),
       ),
@@ -129,6 +132,7 @@ function pushMappedCase(
               club: facts.club,
               role: facts.role,
               signals: facts.signals,
+              tipoEvento: facts.tipoEvento,
               caseId: opts.caso?.absolutePath,
             },
           ],
@@ -148,6 +152,7 @@ function pushMappedCase(
     role: facts.role,
     matchDate: facts.matchDate,
     competition: facts.competition,
+    tipoEvento: facts.tipoEvento ?? null,
     confidence: facts.confidence,
     engine: "classical",
     warning,
@@ -183,6 +188,7 @@ function casesPushError(
     role: null,
     matchDate: null,
     competition: null,
+    tipoEvento: null,
     confidence: 0,
     engine: "classical",
     warning: null,
@@ -326,6 +332,7 @@ export function buildMappedCases(
         club: r.merged.club,
         role: r.merged.role,
         signals: r.merged.signals,
+        tipoEvento: r.merged.tipoEvento,
         caseId: r.caso.absolutePath,
       })),
     });

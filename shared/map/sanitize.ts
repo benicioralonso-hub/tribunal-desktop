@@ -4,7 +4,19 @@
  */
 
 const JUNK_FIELD_RE =
-  /impreso\s+por|hora\s*:|decisi[oó]n\s+de\s+caso|n[uú]m\.?\s*:|competici[oó]n\s*:|infractor\s*:|entrenador\s+expulsado|tipo\s+de\s+infractor|descripci[oó]n\s+de|oficiales\s+de\s+partido|alineaciones|pdf|\bart\b.*\bhms\b/i;
+  /impreso\s+por|hora\s*:|decisi[oó]n\s+de\s+caso|n[uú]m\.?\s*:|competici[oó]n\s*:|infractor\s*:|entrenador\s+expulsado|tipo\s+de\s+infractor|descripci[oó]n\s+de|oficiales\s+de\s+partido|alineaciones|pdf|\bart\b.*\bhms\b|\bcomet\b|asociaci[oó]n\s+del\s+f[uú]tbol\s+argentino|p[aá]gina\s*:\s*\d/i;
+
+/** Cabecera de página COMET (no es club ni persona). */
+export function isCometPageHeader(value: string | null | undefined): boolean {
+  if (!value) return false;
+  const v = value.trim();
+  if (!v) return false;
+  if (/^comet\b/i.test(v)) return true;
+  if (/asociaci[oó]n\s+del\s+f[uú]tbol\s+argentino/i.test(v)) return true;
+  if (/impreso\s+por/i.test(v)) return true;
+  if (/p[aá]gina\s*:\s*\d/i.test(v)) return true;
+  return false;
+}
 
 const STOP_LABELS =
   "Club|Competici[oó]n|Equipo|Local|Visitante|Fecha|Hora|Impreso|Tipo|Descripci[oó]n|Motivo|N[uú]m|N[uú]mero|Decisi[oó]n|Partido|Categor[ií]a|Divisi[oó]n|Infractor|Entrenador|Jugador|Oficial";
@@ -66,6 +78,7 @@ export function isJunkField(value: string | null | undefined): boolean {
   const v = value.trim();
   if (v.length < 2) return true;
   if (v.length > 80) return true;
+  if (isCometPageHeader(v)) return true;
   if (JUNK_FIELD_RE.test(v)) return true;
   if (/^\d{1,4}$/.test(v) && Number(v) < 1000) return true;
   if (/Hora:|Impreso por:/i.test(v)) return true;
@@ -204,11 +217,12 @@ function applyClubShortenRule(v: string): string | null {
 export function formatClubName(raw: string | null | undefined): string | null {
   if (!raw) return null;
   let v = cleanLine(raw);
+  if (isCometPageHeader(v)) return null;
   const clubField = v.match(
     /Club\s*:\s*([A-ZÁÉÍÓÚÑÜ][^|]{2,80}?)(?=\s+Competici|\s+Local|\s+Fecha|$)/i,
   );
   if (clubField) v = cleanLine(clubField[1]!);
-  if (isJunkField(v)) return null;
+  if (isCometPageHeader(v) || isJunkField(v)) return null;
 
   v = v.replace(/\s+\d{1,2}[-/.]\d{1,2}[-/.]\d{2,4}\s*$/u, "").trim();
   v = v.replace(/\s+\d{1,2}(ra|ta|ma|va|na)\.?\s*$/i, "").trim();
@@ -304,6 +318,9 @@ export function isMatchFolderName(raw: string | null | undefined): boolean {
   if (/^\d{1,2}(ra|ta|ma|va|na)\.?$/i.test(name)) return false;
   // Carpetas numéricas tipo 0001–0014
   if (/^\d{3,4}$/.test(name)) return false;
+  // Contenedores de categoría: "0001 PRIMERA LPF", "4TA DIVISION", …
+  if (/^\d{1,4}\s+\S+/i.test(name)) return false;
+  if (/^\d{1,2}(ra|ta|ma|va|na)\.?\s+\S+/i.test(name)) return false;
 
   const parsed = parseMatchFolderName(name);
   return Boolean(parsed.homeClub && parsed.awayClub);

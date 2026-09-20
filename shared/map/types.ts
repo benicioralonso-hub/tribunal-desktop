@@ -19,6 +19,8 @@ export type MappedCase = {
   role: string | null;
   matchDate: string | null;
   competition: string | null;
+  /** Valor crudo de «Tipo de evento» del CASO. */
+  tipoEvento: string | null;
   confidence: number;
   engine: "classical" | "audited";
   /** p.ej. "Alerta: este informe no tiene caso" */

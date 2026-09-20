@@ -49,6 +49,12 @@ function run(): void {
   assert.match(mapped.homeClub || "", /argentinos/i);
   assert.match(mapped.awayClub || "", /asturiano/i);
   assert.ok(mapped.confidence >= 60);
+  assert.match(
+    mapped.tipoEvento || "",
+    /desaprobar con palabras/i,
+  );
+  assert.ok(mapped.signals?.includes("doble_amonestacion"));
+  assert.doesNotMatch(mapped.club || "", /^comet\b/i);
 
   console.log("OK — Bianchini fixture passed");
 }
