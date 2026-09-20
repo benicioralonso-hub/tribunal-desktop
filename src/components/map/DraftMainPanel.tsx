@@ -3,7 +3,7 @@ import type { FalloDraft, SanctionKind } from "../../../shared/fallo/types";
 import { MANUAL_TIPIFY_ARTICLES } from "../../../shared/fallo/tipify-tipo-evento";
 import { buildManualFalloDraft } from "../../../shared/fallo/manual-fallo";
 import { splitFalloFullText } from "../../../shared/fallo/render-fallo";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 type Props = {
   caseItem: MappedCase | null;
@@ -12,8 +12,11 @@ type Props = {
 };
 
 function inferKindFromArticle(article: string): SanctionKind {
-  if (/doble amonestaci|regla\s*12/i.test(article)) return "doble_amonestacion";
-  if (/13\s*1\.\s*c\)|12\s*3\./i.test(article)) return "suspension_con_multa_ve";
+  const a = article.trim();
+  if (/doble amonestaci|regla\s*12/i.test(a)) return "doble_amonestacion";
+  if (/13\s*1\.\s*c\)/i.test(a) || /^Art\.\s*12\s*3/i.test(a)) {
+    return "suspension_con_multa_ve";
+  }
   return "suspension_partidos";
 }
 
@@ -24,6 +27,11 @@ export function DraftMainPanel({
 }: Props) {
   const [article, setArticle] = useState(MANUAL_TIPIFY_ARTICLES[2]!);
   const [partidos, setPartidos] = useState(1);
+
+  useEffect(() => {
+    setArticle(MANUAL_TIPIFY_ARTICLES[2]!);
+    setPartidos(1);
+  }, [caseItem?.id]);
 
   if (!caseItem) {
     return (
