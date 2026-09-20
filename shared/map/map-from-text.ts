@@ -16,6 +16,8 @@ export type MapFacts = {
   competition: string | null;
   kind: "caso" | "informe" | "otro";
   confidence: number;
+  /** Señales COMET (p.ej. doble_amonestacion). */
+  signals?: string[];
 };
 
 export function classifyPdfText(text: string): "caso" | "informe" | "otro" {
@@ -50,6 +52,7 @@ export function mapFactsFromText(
     competition: comet.competition,
     kind,
     confidence: comet.confidence,
+    signals: comet.signals,
   };
 }
 
@@ -76,5 +79,10 @@ export function mergeCasoInforme(
     matchDate: informe?.matchDate || caso?.matchDate || null,
     competition: informe?.competition || caso?.competition || null,
     confidence: Math.max(caso?.confidence ?? 0, informe?.confidence ?? 0),
+    signals: caso?.signals?.length
+      ? caso.signals
+      : informe?.signals?.length
+        ? informe.signals
+        : undefined,
   };
 }

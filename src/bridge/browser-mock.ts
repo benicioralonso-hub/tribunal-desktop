@@ -44,6 +44,7 @@ const DEMO_FILES: BoletinFileEntry[] = [
 function demoCase(partial: Omit<MappedCase, "draft" | "warning" | "engine"> & {
   warning?: string | null;
   missingCaso?: boolean;
+  dobleAmonestacion?: boolean;
 }): MappedCase {
   const draft = buildFalloDraft({
     expediente: partial.expediente,
@@ -51,10 +52,18 @@ function demoCase(partial: Omit<MappedCase, "draft" | "warning" | "engine"> & {
     awayClub: partial.awayClub,
     matchDate: partial.matchDate,
     competition: partial.competition,
-    person: partial.person,
-    role: partial.role,
-    club: partial.club,
+    folderName: partial.folderName,
     missingCaso: partial.missingCaso,
+    persons: partial.missingCaso
+      ? []
+      : [
+          {
+            person: partial.person,
+            club: partial.club,
+            role: partial.role,
+            dobleAmonestacion: partial.dobleAmonestacion,
+          },
+        ],
   });
   return {
     ...partial,
@@ -92,10 +101,11 @@ const DEMO_CASES: MappedCase[] = [
     awayClub: "Centro Asturiano",
     person: "Camila Rosario Bianchini",
     club: "Centro Asturiano",
-    role: "Jugador",
+    role: "Jugadora",
     matchDate: "22/08/2026",
     competition: "Futsal Femenino Preview",
     confidence: 0.88,
+    dobleAmonestacion: true,
   }),
   demoCase({
     id: "demo-3",

@@ -1,5 +1,5 @@
 /**
- * Emparejado CASO/INFORME + borrador — puro (sin Electron).
+ * Emparejado CASO/INFORME + borrador manual automático — puro (sin Electron).
  */
 
 import path from "node:path";
@@ -11,6 +11,7 @@ import {
   buildFalloDraft,
   WARNING_SIN_CASO,
 } from "../fallo/build-draft";
+import type { FalloDraft } from "../fallo/types";
 import type { MappedCase } from "./types";
 
 export type PdfHit = {
@@ -49,6 +50,42 @@ function classifyHit(
   return { ...hit, kind, leaf };
 }
 
+function buildSharedDraft(opts: {
+  folderName: string;
+  expediente: string | null;
+  homeClub: string | null;
+  awayClub: string | null;
+  matchDate: string | null;
+  competition: string | null;
+  persons: Array<{
+    person: string | null;
+    club: string | null;
+    role: string | null;
+    signals?: string[];
+    caseId?: string;
+  }>;
+  missingCaso: boolean;
+}): FalloDraft {
+  return buildFalloDraft({
+    expediente: opts.expediente,
+    homeClub: opts.homeClub,
+    awayClub: opts.awayClub,
+    matchDate: opts.matchDate,
+    competition: opts.competition,
+    folderName: opts.folderName,
+    missingCaso: opts.missingCaso,
+    persons: opts.persons.map((p) => ({
+      person: p.person,
+      club: p.club,
+      role: p.role,
+      caseId: p.caseId,
+      dobleAmonestacion: Boolean(
+        p.signals?.includes("doble_amonestacion"),
+      ),
+    })),
+  });
+}
+
 function pushMappedCase(
   cases: MappedCase[],
   opts: {
@@ -59,8 +96,10 @@ function pushMappedCase(
     casoRes?: MapWorkerResult;
     infRes?: MapWorkerResult;
     warning?: string | null;
+    /** Borrador compartido del partido (1 doc, N resoluciones). */
+    sharedDraft?: FalloDraft | null;
   },
-): void {
+): MappedCase {
   const folderMeta = parseMatchFolderName(opts.folderName);
   const facts = mergeCasoInforme(
     opts.casoRes?.ok ? opts.casoRes.facts : null,
@@ -72,19 +111,30 @@ function pushMappedCase(
     opts.warning ?? (missingCaso ? WARNING_SIN_CASO : null);
   const expediente = folderMeta.expedienteHint;
 
-  const draft = buildFalloDraft({
-    expediente,
-    homeClub: facts.homeClub,
-    awayClub: facts.awayClub,
-    matchDate: facts.matchDate,
-    competition: facts.competition,
-    person: facts.person,
-    role: facts.role,
-    club: facts.club,
-    missingCaso,
-  });
+  const draft =
+    opts.sharedDraft ??
+    buildSharedDraft({
+      folderName: opts.folderName,
+      expediente,
+      homeClub: facts.homeClub,
+      awayClub: facts.awayClub,
+      matchDate: facts.matchDate,
+      competition: facts.competition,
+      missingCaso,
+      persons: missingCaso
+        ? []
+        : [
+            {
+              person: facts.person,
+              club: facts.club,
+              role: facts.role,
+              signals: facts.signals,
+              caseId: opts.caso?.absolutePath,
+            },
+          ],
+    });
 
-  cases.push({
+  const mapped: MappedCase = {
     id: randomUUID(),
     folderPath: opts.folderPath,
     folderName: opts.folderName,
@@ -108,7 +158,9 @@ function pushMappedCase(
         : opts.infRes && !opts.infRes.ok
           ? opts.infRes.error
           : undefined,
-  });
+  };
+  cases.push(mapped);
+  return mapped;
 }
 
 function casesPushError(
@@ -143,6 +195,7 @@ function casesPushError(
  * Agrupa exclusivamente por carpeta de partido.
  * 1 informe compartido entre N casos del mismo partido.
  * Informe sin caso → warning.
+ * Borrador manual automático: 1 fallo por partido (N resoluciones).
  */
 export function buildMappedCases(
   pdfs: PdfHit[],
@@ -202,8 +255,28 @@ export function buildMappedCases(
     const anchors =
       casoHits.length > 0 ? casoHits : otros.length > 0 ? otros : [];
 
+    const folderMeta = parseMatchFolderName(folderName);
+    const infFacts =
+      sharedInforme && byPath.get(sharedInforme.absolutePath)?.ok
+        ? (byPath.get(sharedInforme.absolutePath) as Extract<
+            MapWorkerResult,
+            { ok: true }
+          >).facts
+        : null;
+
     if (anchors.length === 0) {
       if (sharedInforme) {
+        const merged = mergeCasoInforme(null, infFacts, folderName);
+        const draft = buildSharedDraft({
+          folderName,
+          expediente: folderMeta.expedienteHint,
+          homeClub: merged.homeClub,
+          awayClub: merged.awayClub,
+          matchDate: merged.matchDate,
+          competition: merged.competition,
+          missingCaso: true,
+          persons: [],
+        });
         pushMappedCase(cases, {
           folderPath: folder,
           folderName,
@@ -211,21 +284,63 @@ export function buildMappedCases(
           informe: sharedInforme,
           infRes: byPath.get(sharedInforme.absolutePath),
           warning: WARNING_SIN_CASO,
+          sharedDraft: draft,
         });
       }
       continue;
     }
 
-    for (const caso of anchors) {
+    // Hechos por caso + merge con informe para clubs/fecha
+    const personRows = anchors.map((caso) => {
+      const casoRes = byPath.get(caso.absolutePath);
+      const merged = mergeCasoInforme(
+        casoRes?.ok ? casoRes.facts : null,
+        infFacts,
+        folderName,
+      );
+      return { caso, casoRes, merged };
+    });
+
+    const matchHome =
+      personRows.find((r) => r.merged.homeClub)?.merged.homeClub ??
+      folderMeta.homeClub;
+    const matchAway =
+      personRows.find((r) => r.merged.awayClub)?.merged.awayClub ??
+      folderMeta.awayClub;
+    const matchDate =
+      personRows.find((r) => r.merged.matchDate)?.merged.matchDate ?? null;
+    const competition =
+      personRows.find((r) => r.merged.competition)?.merged.competition ??
+      null;
+
+    const sharedDraft = buildSharedDraft({
+      folderName,
+      expediente: folderMeta.expedienteHint,
+      homeClub: matchHome,
+      awayClub: matchAway,
+      matchDate,
+      competition,
+      missingCaso: false,
+      persons: personRows.map((r) => ({
+        person: r.merged.person,
+        club: r.merged.club,
+        role: r.merged.role,
+        signals: r.merged.signals,
+        caseId: r.caso.absolutePath,
+      })),
+    });
+
+    for (const row of personRows) {
       pushMappedCase(cases, {
         folderPath: folder,
         folderName,
-        caso,
+        caso: row.caso,
         informe: sharedInforme,
-        casoRes: byPath.get(caso.absolutePath),
+        casoRes: row.casoRes,
         infRes: sharedInforme
           ? byPath.get(sharedInforme.absolutePath)
           : undefined,
+        sharedDraft,
       });
     }
   }

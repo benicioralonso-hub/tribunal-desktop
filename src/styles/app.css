@@ -446,13 +446,28 @@ button:disabled {
   gap: 8px;
 }
 
-.draft-main-header h3 {
+.draft-label {
+  margin: 0;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+}
+
+.draft-title {
   margin: 0;
   font-family: var(--font-display);
-  font-size: 1.15rem;
+  font-size: 1.05rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.3;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+  color: var(--ink);
+}
+
+.draft-hint {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--muted);
 }
 
 .draft-exp {

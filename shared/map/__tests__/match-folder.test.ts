@@ -84,7 +84,7 @@ assert.match(parsed.awayClub || "", /boca/i);
   assert.equal(cases[0]!.warning, WARNING_SIN_CASO);
   assert.equal(cases[0]!.casoPdfPath, null);
   assert.equal(cases[0]!.expediente, "99.523");
-  assert.ok(cases[0]!.draft?.fullText.includes("VISTO el expediente"));
+  assert.ok(cases[0]!.draft?.header.includes("EXPTE."));
   assert.ok(cases[0]!.draft?.fullText.includes(WARNING_SIN_CASO));
 }
 
@@ -159,8 +159,12 @@ assert.match(parsed.awayClub || "", /boca/i);
   assert.equal(cases[0]!.informePdfPath, informePath);
   assert.equal(cases[1]!.informePdfPath, informePath);
   assert.equal(cases[0]!.warning, null);
-  assert.ok(cases[0]!.draft?.fullText.includes("Suspender a"));
+  assert.ok(cases[0]!.draft?.body.includes("Se suspende"));
   assert.equal(cases[0]!.expediente, "12345");
+  // Mismo borrador compartido (1 fallo, 2 resoluciones)
+  assert.equal(cases[0]!.draft?.fullText, cases[1]!.draft?.fullText);
+  assert.match(cases[0]!.draft!.fullText, /1°\)/);
+  assert.match(cases[0]!.draft!.fullText, /2°\)/);
 }
 
 console.log("OK — match-folder + buildMappedCases fixtures");

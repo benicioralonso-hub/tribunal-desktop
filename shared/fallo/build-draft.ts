@@ -1,93 +1,111 @@
 /**
- * Redacción clásica del borrador de fallo (sin IA / sin códigos).
- * Template alineado al brief de producto; listo para enriquecer
- * con tipificación/sanciones cuando exista el dump de tribunal-app.
+ * Generación automática del borrador manual post-mapeo
+ * (equivalente a “Generar borrador manual” de la web, sin botón).
  */
 
-import type { FalloDraft } from "../map/types";
+import { buildFalloHeader, finalizeDraft } from "./render-fallo";
+import {
+  buildManualFalloDraft,
+  type ManualResolutionLine,
+} from "./manual-fallo";
+import type { FalloDraft, SanctionKind } from "./types";
 
-const WARNING_SIN_CASO = "Alerta: este informe no tiene caso";
+export const WARNING_SIN_CASO = "Alerta: este informe no tiene caso";
 
-export { WARNING_SIN_CASO };
+export type AutoDraftPerson = {
+  person: string | null;
+  club: string | null;
+  role: string | null;
+  /** Señal COMET: doble amonestación → Regla 12. */
+  dobleAmonestacion?: boolean;
+  partidos?: number;
+  caseId?: string;
+};
 
-export type DraftInput = {
+export type AutoDraftInput = {
   expediente: string | null;
   homeClub: string | null;
   awayClub: string | null;
   matchDate: string | null;
   competition: string | null;
-  person: string | null;
-  role: string | null;
-  club: string | null;
-  /** true cuando hay informe pero ningún caso en la carpeta. */
+  folderName?: string | null;
+  /** Todos los infractores del partido (1 fallo, N resoluciones). */
+  persons: AutoDraftPerson[];
   missingCaso?: boolean;
 };
 
-function orPlaceholder(value: string | null | undefined): string {
-  const v = String(value || "").trim();
-  return v || "[sin dato]";
+function inferKind(p: AutoDraftPerson): SanctionKind {
+  if (p.dobleAmonestacion) return "doble_amonestacion";
+  return "suspension_partidos";
 }
 
-export function buildFalloTitle(input: DraftInput): string {
-  const home = orPlaceholder(input.homeClub);
-  const away = orPlaceholder(input.awayClub);
-  const date = input.matchDate?.trim() || null;
-  const exp = input.expediente?.trim() || null;
-  const bits = [`${home} c. ${away}`];
-  if (date) bits.push(date);
-  if (exp) bits.push(`EXPTE. N° ${exp}`);
-  return bits.join(" — ");
+/** Borrador pendiente cuando hay informe sin caso. */
+export function buildPendingSinCasoDraft(input: {
+  expediente: string | null;
+  homeClub: string | null;
+  awayClub: string | null;
+  matchDate: string | null;
+  competition: string | null;
+  folderName?: string | null;
+}): FalloDraft {
+  const header = buildFalloHeader({
+    homeClub: input.homeClub,
+    awayClub: input.awayClub,
+    match: input.folderName,
+    category: input.competition,
+    divisionLabelOverride: undefined,
+    matchDate: input.matchDate,
+    expedienteNumber: input.expediente,
+  });
+  return finalizeDraft({
+    header,
+    confidence: 20,
+    rationale: WARNING_SIN_CASO,
+    redactorModel: "manual",
+    items: [
+      {
+        kind: "otra",
+        personName: "",
+        role: "",
+        club: "",
+        bodyText: `[Pendiente] ${WARNING_SIN_CASO}. No se pudo redactar la resolución por falta de CASO disciplinario.`,
+      },
+    ],
+  });
 }
 
-export function buildFalloBody(input: DraftInput): string {
-  const exp = orPlaceholder(input.expediente);
-  const home = orPlaceholder(input.homeClub);
-  const away = orPlaceholder(input.awayClub);
-  const date = orPlaceholder(input.matchDate);
-  const competition = input.competition?.trim();
-
-  const vistoParts = [
-    `VISTO el expediente Nº ${exp}, originado con motivo del partido ${home} c. ${away}, disputado el ${date}`,
-  ];
-  if (competition) {
-    vistoParts.push(`en el marco de ${competition}`);
+/**
+ * Genera el fallo manual automáticamente tras el mapeo.
+ * Mismo motor que la web: encabezado + cuerpos tipificados.
+ */
+export function buildFalloDraft(input: AutoDraftInput): FalloDraft {
+  if (input.missingCaso || input.persons.length === 0) {
+    return buildPendingSinCasoDraft(input);
   }
-  const visto = `${vistoParts.join(", ")}.`;
 
-  if (input.missingCaso) {
-    return [
-      visto,
-      "",
-      "EL TRIBUNAL DE DISCIPLINA RESUELVE:",
-      "",
-      `[Pendiente] ${WARNING_SIN_CASO}. No se pudo redactar la resolución por falta de CASO disciplinario.`,
-    ].join("\n");
-  }
+  const resolutions: ManualResolutionLine[] = input.persons.map((p) => {
+    const kind = inferKind(p);
+    return {
+      kind,
+      personName: p.person || "",
+      club: p.club || input.homeClub || "",
+      role: p.role || "jugador",
+      partidos: kind === "doble_amonestacion" ? 1 : p.partidos ?? 1,
+      caseId: p.caseId,
+    };
+  });
 
-  const person = orPlaceholder(input.person);
-  const role = input.role?.trim();
-  const club = input.club?.trim();
-
-  const sujetoBits = [person];
-  if (role) sujetoBits.push(`(${role})`);
-  if (club) sujetoBits.push(`del club ${club}`);
-  const sujeto = sujetoBits.join(" ");
-
-  return [
-    visto,
-    "",
-    "EL TRIBUNAL DE DISCIPLINA RESUELVE:",
-    "",
-    `Suspender a ${sujeto}, de conformidad con las constancias del expediente, hasta tanto se determine la sanción definitiva conforme al Código Disciplinario.`,
-  ].join("\n");
+  return buildManualFalloDraft({
+    homeClub: input.homeClub || "",
+    awayClub: input.awayClub || "",
+    expedienteNumber: input.expediente || undefined,
+    matchDate: input.matchDate || undefined,
+    category: input.competition || undefined,
+    matchFolder: input.folderName || undefined,
+    resolutions,
+  });
 }
 
-export function buildFalloDraft(input: DraftInput): FalloDraft {
-  const title = buildFalloTitle(input);
-  const body = buildFalloBody(input);
-  return {
-    title,
-    body,
-    fullText: `${title}\n\n${body}`,
-  };
-}
+// Re-exports for callers that still import title helpers
+export { buildFalloHeader } from "./render-fallo";
+export { buildManualFalloDraft } from "./manual-fallo";

@@ -127,16 +127,23 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
     setCases((prev) =>
       prev.map((c) => {
         if (c.id !== selectedId) return c;
-        const title = c.draft?.title ?? c.folderName;
-        const body = fullText.startsWith(title)
-          ? fullText.slice(title.length).replace(/^\n+/, "")
-          : fullText;
+        const nl = fullText.indexOf("\n");
+        const header =
+          nl >= 0 ? fullText.slice(0, nl).trim() : fullText.trim();
+        const body = nl >= 0 ? fullText.slice(nl + 1).trim() : "";
         return {
           ...c,
           draft: {
-            title,
+            title: header,
+            header,
             body,
             fullText,
+            items: c.draft?.items ?? [],
+            confidence: c.draft?.confidence ?? c.confidence,
+            status: "modified",
+            rationale: c.draft?.rationale,
+            redactorModel: c.draft?.redactorModel ?? "manual",
+            updatedAt: new Date().toISOString(),
           },
         };
       }),

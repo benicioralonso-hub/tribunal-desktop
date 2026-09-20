@@ -1,13 +1,8 @@
+import type { FalloDraft } from "../fallo/types";
+
 export type MappedPdfKind = "caso" | "informe" | "otro";
 
-export type FalloDraft = {
-  /** Título del fallo (clubs, fecha, expediente). */
-  title: string;
-  /** Cuerpo: VISTO… + RESUELVE… */
-  body: string;
-  /** title + body listos para UI / exportación. */
-  fullText: string;
-};
+export type { FalloDraft };
 
 export type MappedCase = {
   id: string;
@@ -28,7 +23,7 @@ export type MappedCase = {
   engine: "classical" | "audited";
   /** p.ej. "Alerta: este informe no tiene caso" */
   warning: string | null;
-  /** Borrador del fallo generado al mapear. */
+  /** Borrador del fallo generado al mapear (modo manual automático). */
   draft: FalloDraft | null;
   error?: string;
 };

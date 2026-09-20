@@ -1,4 +1,5 @@
 import type { MappedCase } from "../../shared/map/types";
+import { splitFalloFullText } from "../../../shared/fallo/render-fallo";
 
 type Props = {
   caseItem: MappedCase | null;
@@ -16,19 +17,24 @@ export function DraftMainPanel({ caseItem, onDraftChange }: Props) {
     );
   }
 
-  const title =
+  const header =
+    caseItem.draft?.header ||
     caseItem.draft?.title ||
     (caseItem.homeClub && caseItem.awayClub
       ? `${caseItem.homeClub} c. ${caseItem.awayClub}`
       : caseItem.folderName);
-  const fullText =
-    caseItem.draft?.fullText ||
-    "Aún no hay borrador generado para este caso.";
+  const body =
+    caseItem.draft?.body ||
+    (caseItem.draft?.fullText
+      ? splitFalloFullText(caseItem.draft.fullText).body
+      : "");
+  const fullText = caseItem.draft?.fullText || `${header}\n${body}`.trim();
 
   return (
     <section className="draft-main glass-panel" aria-label="Borrador del fallo">
       <header className="draft-main-header">
-        <h3>{title}</h3>
+        <p className="draft-label">Título del fallo</p>
+        <h3 className="draft-title">{header}</h3>
         {caseItem.expediente ? (
           <p className="draft-exp">Expediente Nº {caseItem.expediente}</p>
         ) : null}
@@ -55,7 +61,7 @@ export function DraftMainPanel({ caseItem, onDraftChange }: Props) {
       ) : null}
 
       <div className="draft-editor-wrap">
-        <label htmlFor="draft-editor">Borrador del fallo</label>
+        <label htmlFor="draft-editor">Cuerpo del fallo</label>
         <textarea
           id="draft-editor"
           className="draft-editor"
@@ -63,6 +69,10 @@ export function DraftMainPanel({ caseItem, onDraftChange }: Props) {
           onChange={(e) => onDraftChange(e.target.value)}
           spellCheck
         />
+        <p className="draft-hint">
+          Formato manual AFA: título (primera línea) + resoluciones. Editable
+          antes de auditar.
+        </p>
       </div>
     </section>
   );
