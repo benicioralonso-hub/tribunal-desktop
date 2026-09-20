@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
-import type { MappedCase } from "../../shared/map/types";
+import type {
+  AttachmentKind,
+  MappedCase,
+} from "../../shared/map/types";
 import { getTribunalApi } from "../../bridge/api";
 
 export type EvidenceTab = {
   id: string;
   label: string;
   pdfPath: string | null;
+  included: boolean;
+  kind: "informe" | "caso" | AttachmentKind;
 };
 
 export function buildEvidenceTabs(
@@ -18,7 +23,17 @@ export function buildEvidenceTabs(
     siblings.find((s) => s.informePdfPath)?.informePdfPath ||
     null;
   if (informe) {
-    tabs.push({ id: "informe", label: "Ver Informe", pdfPath: informe });
+    const informeIncluded =
+      siblings.find((s) => s.informePdfPath)?.informeIncluded ??
+      caseItem.informeIncluded ??
+      true;
+    tabs.push({
+      id: "informe",
+      label: "Ver Informe",
+      pdfPath: informe,
+      included: informeIncluded,
+      kind: "informe",
+    });
   }
   const casos = siblings.filter((s) => s.casoPdfPath);
   if (casos.length === 0 && caseItem.casoPdfPath) {
@@ -26,6 +41,8 @@ export function buildEvidenceTabs(
       id: `caso-${caseItem.id}`,
       label: "Ver Caso",
       pdfPath: caseItem.casoPdfPath,
+      included: caseItem.included,
+      kind: "caso",
     });
   } else {
     casos.forEach((c, i) => {
@@ -33,9 +50,34 @@ export function buildEvidenceTabs(
         id: `caso-${c.id}`,
         label: casos.length === 1 ? "Ver Caso" : `Ver Caso ${i + 1}`,
         pdfPath: c.casoPdfPath,
+        included: c.included,
+        kind: "caso",
       });
     });
   }
+
+  const seen = new Set(
+    tabs.map((t) => t.pdfPath).filter((p): p is string => Boolean(p)),
+  );
+  const attachments = caseItem.attachments ?? [];
+  for (const att of attachments) {
+    if (seen.has(att.path)) continue;
+    seen.add(att.path);
+    const label =
+      att.kind === "descargo"
+        ? `Descargo`
+        : att.kind === "nota"
+          ? `Nota`
+          : att.name.replace(/\.pdf$/i, "") || "Adjunto";
+    tabs.push({
+      id: `att-${att.id}`,
+      label,
+      pdfPath: att.path,
+      included: att.included,
+      kind: att.kind,
+    });
+  }
+
   return tabs;
 }
 
@@ -55,7 +97,10 @@ export function EvidenceViewer({ caseItem, siblings }: Props) {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    setActiveId(tabs[0]?.id ?? null);
+    setActiveId((prev) => {
+      if (prev && tabs.some((t) => t.id === prev)) return prev;
+      return tabs[0]?.id ?? null;
+    });
   }, [caseItem?.id, tabs]);
 
   const active = tabs.find((t) => t.id === activeId) ?? tabs[0] ?? null;
@@ -127,8 +172,15 @@ export function EvidenceViewer({ caseItem, siblings }: Props) {
               className="evidence-tab"
               aria-selected={tab.id === active?.id}
               data-active={tab.id === active?.id}
+              data-included={tab.included}
+              title={tab.included ? "Incluido en el borrador" : "Excluido del borrador"}
               onClick={() => setActiveId(tab.id)}
             >
+              <span
+                className="evidence-tab-dot"
+                data-included={tab.included}
+                aria-hidden
+              />
               {tab.label}
             </button>
           ))

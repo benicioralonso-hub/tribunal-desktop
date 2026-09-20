@@ -181,4 +181,80 @@ assert.match(parsed.awayClub || "", /boca/i);
   assert.match(cases[0]!.draft!.fullText, /2°\)/);
 }
 
+// --- adjuntos: CASO + INFORME + DESCARGO no crea ancla extra ---
+{
+  const folder = "/boletin/0001/River Plate c. Boca Juniors 99.523";
+  const folderName = "River Plate c. Boca Juniors 99.523";
+  const informePath = `${folder}/INFORME.pdf`;
+  const casoPath = `${folder}/CASO.pdf`;
+  const descargoPath = `${folder}/DESCARGO_club.pdf`;
+  const notaPath = `${folder}/nota_prueba.pdf`;
+  const otroPath = `${folder}/prueba_foto.pdf`;
+  const pdfs: PdfHit[] = [
+    { absolutePath: informePath, folderPath: folder, folderName },
+    { absolutePath: casoPath, folderPath: folder, folderName },
+    { absolutePath: descargoPath, folderPath: folder, folderName },
+    { absolutePath: notaPath, folderPath: folder, folderName },
+    { absolutePath: otroPath, folderPath: folder, folderName },
+  ];
+  const byPath = new Map<string, MapWorkerResult>([
+    [
+      informePath,
+      okResult(
+        informePath,
+        facts({
+          kind: "informe",
+          homeClub: "River Plate",
+          awayClub: "Boca Juniors",
+        }),
+      ),
+    ],
+    [
+      casoPath,
+      okResult(
+        casoPath,
+        facts({ kind: "caso", person: "Juan Pérez", role: "jugador" }),
+      ),
+    ],
+    [
+      descargoPath,
+      okResult(descargoPath, facts({ kind: "otro" })),
+    ],
+    [notaPath, okResult(notaPath, facts({ kind: "otro" }))],
+    [otroPath, okResult(otroPath, facts({ kind: "otro" }))],
+  ]);
+  const cases = buildMappedCases(pdfs, byPath);
+  assert.equal(cases.length, 1, "adjuntos no deben crear casos extra");
+  assert.equal(cases[0]!.casoPdfPath, casoPath);
+  assert.equal(cases[0]!.attachments.length, 3);
+  assert.equal(cases[0]!.included, true);
+  assert.equal(cases[0]!.informeIncluded, true);
+  const byKind = Object.fromEntries(
+    cases[0]!.attachments.map((a) => [a.kind, a]),
+  );
+  assert.equal(byKind.descargo?.included, false);
+  assert.equal(byKind.nota?.included, false);
+  assert.equal(byKind.otro?.included, false);
+  assert.equal(byKind.descargo?.name, "DESCARGO_club.pdf");
+}
+
+// --- solo adjuntos (sin caso ni informe) → shell con attachments ---
+{
+  const folder = "/boletin/0001/San Lorenzo c. Huracán 66.010";
+  const folderName = "San Lorenzo c. Huracán 66.010";
+  const descargoPath = `${folder}/descargo.pdf`;
+  const pdfs: PdfHit[] = [
+    { absolutePath: descargoPath, folderPath: folder, folderName },
+  ];
+  const byPath = new Map<string, MapWorkerResult>([
+    [descargoPath, okResult(descargoPath, facts({ kind: "otro" }))],
+  ]);
+  const cases = buildMappedCases(pdfs, byPath);
+  assert.equal(cases.length, 1);
+  assert.equal(cases[0]!.casoPdfPath, null);
+  assert.equal(cases[0]!.informePdfPath, null);
+  assert.equal(cases[0]!.attachments.length, 1);
+  assert.equal(cases[0]!.attachments[0]!.kind, "descargo");
+}
+
 console.log("OK — match-folder + buildMappedCases fixtures");

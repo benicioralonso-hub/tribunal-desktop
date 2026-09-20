@@ -7,6 +7,10 @@ import {
   uniqueCompetitions,
   type CaseListFilters,
 } from "../../../shared/map/filter-cases";
+import {
+  buildExpedienteRows,
+  ExpedienteDocsList,
+} from "./ExpedienteDocsList";
 
 export type MatchGroup = {
   key: string;
@@ -54,6 +58,13 @@ type Props = {
   selectedId: string | null;
   onSelect: (caseId: string) => void;
   onDebug: (caseItem: MappedCase) => void;
+  onToggleCaso: (caseId: string, included: boolean) => void;
+  onToggleInforme: (folderPath: string, included: boolean) => void;
+  onToggleAttachment: (
+    folderPath: string,
+    attachmentId: string,
+    included: boolean,
+  ) => void;
 };
 
 export function MatchSidebar({
@@ -61,6 +72,9 @@ export function MatchSidebar({
   selectedId,
   onSelect,
   onDebug,
+  onToggleCaso,
+  onToggleInforme,
+  onToggleAttachment,
 }: Props) {
   const [filters, setFilters] = useState<CaseListFilters>(emptyCaseListFilters);
 
@@ -72,6 +86,32 @@ export function MatchSidebar({
   );
   const groups = useMemo(() => groupCasesByMatch(filtered), [filtered]);
   const total = filtered.length;
+
+  const selected = cases.find((c) => c.id === selectedId) ?? null;
+  const selectedSiblings = useMemo(() => {
+    if (!selected) return [];
+    return cases.filter((c) => c.folderPath === selected.folderPath);
+  }, [cases, selected]);
+
+  const docRows = useMemo(() => {
+    if (!selected) return [];
+    const attachments = selected.attachments ?? [];
+    return buildExpedienteRows({
+      siblings: selectedSiblings,
+      attachments,
+      onToggleCaso,
+      onToggleInforme: (included) =>
+        onToggleInforme(selected.folderPath, included),
+      onToggleAttachment: (attachmentId, included) =>
+        onToggleAttachment(selected.folderPath, attachmentId, included),
+    });
+  }, [
+    selected,
+    selectedSiblings,
+    onToggleCaso,
+    onToggleInforme,
+    onToggleAttachment,
+  ]);
 
   return (
     <aside className="match-sidebar glass-panel" aria-label="Partidos mapeados">
@@ -145,11 +185,13 @@ export function MatchSidebar({
                   ? "Sin caso"
                   : "Sin infractor";
               const delay = Math.min(gi * 40 + ci * 35, 420);
+              const excluded = c.included === false;
               return (
                 <li key={c.id}>
                   <div
                     className="match-card-wrap"
                     data-active={c.id === selectedId}
+                    data-excluded={excluded}
                   >
                     <button
                       type="button"
@@ -157,12 +199,16 @@ export function MatchSidebar({
                       data-active={c.id === selectedId}
                       data-warn={Boolean(c.warning)}
                       data-tipify={c.draft?.status === "sin_tipificar"}
+                      data-excluded={excluded}
                       style={{ animationDelay: `${delay}ms` }}
                       onClick={() => onSelect(c.id)}
                     >
                       <span className="match-card-title">{label}</span>
                       <span className="match-card-meta">
                         <span>{sub}</span>
+                        {excluded ? (
+                          <span className="excluded-badge">Excluido</span>
+                        ) : null}
                         {c.categoryRoot ? (
                           <span className="match-cat">{c.categoryRoot}</span>
                         ) : null}
@@ -195,6 +241,8 @@ export function MatchSidebar({
           )
         )}
       </ul>
+
+      {selected ? <ExpedienteDocsList rows={docRows} /> : null}
     </aside>
   );
 }

@@ -41,6 +41,9 @@ function fake(partial: Partial<MappedCase> & { id: string }): MappedCase {
     engine: "classical",
     warning: null,
     draft: null,
+    included: true,
+    informeIncluded: true,
+    attachments: [],
     ...partial,
   };
 }

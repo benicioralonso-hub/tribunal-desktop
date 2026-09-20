@@ -41,12 +41,25 @@ const DEMO_FILES: BoletinFileEntry[] = [
   },
 ];
 
-function demoCase(partial: Omit<MappedCase, "draft" | "warning" | "engine" | "tipoEvento" | "categoryRoot"> & {
+function demoCase(partial: Omit<
+  MappedCase,
+  | "draft"
+  | "warning"
+  | "engine"
+  | "tipoEvento"
+  | "categoryRoot"
+  | "included"
+  | "informeIncluded"
+  | "attachments"
+> & {
   warning?: string | null;
   missingCaso?: boolean;
   dobleAmonestacion?: boolean;
   tipoEvento?: string | null;
   categoryRoot?: string | null;
+  included?: boolean;
+  informeIncluded?: boolean;
+  attachments?: MappedCase["attachments"];
 }): MappedCase {
   const draft = buildFalloDraft({
     expediente: partial.expediente,
@@ -82,6 +95,9 @@ function demoCase(partial: Omit<MappedCase, "draft" | "warning" | "engine" | "ti
     engine: "classical",
     warning: partial.warning ?? null,
     draft,
+    included: partial.included ?? true,
+    informeIncluded: partial.informeIncluded ?? true,
+    attachments: partial.attachments ?? [],
   };
 }
 
@@ -102,6 +118,22 @@ const DEMO_CASES: MappedCase[] = [
     competition: "Torneo Preview",
     confidence: 0.92,
     tipoEvento: "Tarjeta roja - Juego brusco grave",
+    attachments: [
+      {
+        id: "att-descargo-1",
+        name: "DESCARGO_club.pdf",
+        path: `${DEMO_FOLDER}/0001/River Plate c. Boca Juniors 99.523/DESCARGO_club.pdf`,
+        kind: "descargo",
+        included: false,
+      },
+      {
+        id: "att-nota-1",
+        name: "nota_arbitro.pdf",
+        path: `${DEMO_FOLDER}/0001/River Plate c. Boca Juniors 99.523/nota_arbitro.pdf`,
+        kind: "nota",
+        included: false,
+      },
+    ],
   }),
   demoCase({
     id: "demo-2",
@@ -156,6 +188,15 @@ const DEMO_CASES: MappedCase[] = [
     confidence: 0.75,
     tipoEvento:
       "Tarjeta roja - Emplear lenguaje ofensivo, grosero u obsceno y/o gestos de la misma naturaleza",
+    attachments: [
+      {
+        id: "att-otro-4",
+        name: "prueba_adicional.pdf",
+        path: `${DEMO_FOLDER}/0002/San Lorenzo c. Huracán 66.010/prueba_adicional.pdf`,
+        kind: "otro",
+        included: false,
+      },
+    ],
   }),
 ];
 

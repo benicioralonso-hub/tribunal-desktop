@@ -2,6 +2,17 @@ import type { FalloDraft } from "../fallo/types";
 
 export type MappedPdfKind = "caso" | "informe" | "otro";
 
+export type AttachmentKind = "descargo" | "nota" | "otro";
+
+export type MappedAttachment = {
+  id: string;
+  name: string;
+  path: string;
+  kind: AttachmentKind;
+  /** Default false — adjuntos opcionales apagados hasta que el usuario los active. */
+  included: boolean;
+};
+
 export type { FalloDraft };
 
 export type MappedCase = {
@@ -32,6 +43,12 @@ export type MappedCase = {
   warning: string | null;
   /** Borrador del fallo generado al mapear (modo manual automático). */
   draft: FalloDraft | null;
+  /** Si false, el caso se excluye del procesamiento final. Default true. */
+  included: boolean;
+  /** Si false, el informe del partido se excluye. Default true. */
+  informeIncluded: boolean;
+  /** PDFs auxiliares de la carpeta (descargos, notas, otros). */
+  attachments: MappedAttachment[];
   error?: string;
 };
 
