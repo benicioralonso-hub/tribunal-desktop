@@ -10,7 +10,7 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "preview:ui": "vite --config vite.preview.config.ts",
-    "test:map": "npx --yes tsx shared/map/__tests__/bianchini.test.ts && npx --yes tsx shared/map/__tests__/match-folder.test.ts && npx --yes tsx shared/fallo/__tests__/build-draft.test.ts",
+    "test:map": "npx --yes tsx shared/map/__tests__/bianchini.test.ts && npx --yes tsx shared/map/__tests__/match-folder.test.ts && npx --yes tsx shared/fallo/__tests__/build-draft.test.ts && npx --yes tsx --test shared/fallo/__tests__/tipify-tipo-evento.test.ts",
     "test:audit": "npx --yes tsx shared/ai/__tests__/audit-apply.test.ts",
     "test:docx": "npx --yes tsx shared/docx/__tests__/docx-build.test.ts",
     "test": "npm run test:map && npm run test:audit && npm run test:docx",

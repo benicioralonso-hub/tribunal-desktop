@@ -9,6 +9,7 @@ import {
   groupCasesByMatch,
 } from "../components/map/MatchSidebar";
 import type { MappedCase, MapProgressEvent } from "../../shared/map/types";
+import type { FalloDraft } from "../../shared/fallo/types";
 
 type Props = {
   folderPath: string;
@@ -150,6 +151,13 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
     );
   }
 
+  function onTipifyApply(draft: FalloDraft) {
+    if (!selectedId) return;
+    setCases((prev) =>
+      prev.map((c) => (c.id === selectedId ? { ...c, draft } : c)),
+    );
+  }
+
   return (
     <section className="stage-select stage-map" aria-labelledby="stage2-title">
       <div className="stage-map-head">
@@ -222,6 +230,7 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
           <DraftMainPanel
             caseItem={selected}
             onDraftChange={onDraftChange}
+            onTipifyApply={onTipifyApply}
           />
         </div>
       ) : null}

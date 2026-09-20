@@ -76,6 +76,7 @@ export function MatchSidebar({ groups, selectedId, onSelect }: Props) {
                   className="match-card"
                   data-active={c.id === selectedId}
                   data-warn={Boolean(c.warning)}
+                  data-tipify={c.draft?.status === "sin_tipificar"}
                   style={{ animationDelay: `${delay}ms` }}
                   onClick={() => onSelect(c.id)}
                 >
@@ -83,6 +84,11 @@ export function MatchSidebar({ groups, selectedId, onSelect }: Props) {
                   <span className="match-card-meta">
                     <span>{sub}</span>
                     {c.expediente ? <span>Exp. {c.expediente}</span> : null}
+                    {c.draft?.status === "sin_tipificar" ? (
+                      <span className="tipify-badge-sm">
+                        ⚠️ Requiere Tipificación Manual
+                      </span>
+                    ) : null}
                     {c.warning ? (
                       <span className="warn-badge">Sin caso</span>
                     ) : null}
