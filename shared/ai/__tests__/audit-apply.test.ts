@@ -25,6 +25,7 @@ const base: MappedCase = {
   matchDate: "2026-03-15",
   competition: "Torneo",
   tipoEvento: null,
+  categoryRoot: "0001",
   confidence: 0.9,
   engine: "classical",
   warning: null,

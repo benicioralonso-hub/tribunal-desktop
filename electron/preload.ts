@@ -9,6 +9,7 @@ import {
   type AuditStatusResult,
   type AuditMappedCasesOptions,
   type ExportDocxResult,
+  type ReadLocalPdfResult,
   type MappedCase,
   type AuditedCase,
 } from "./ipc/channels";
@@ -45,6 +46,8 @@ const tribunalApi = {
   },
   exportBoletinDocx: (cases: AuditedCase[]): Promise<ExportDocxResult> =>
     ipcRenderer.invoke(IPC.EXPORT_BOLETIN_DOCX, cases),
+  readLocalPdf: (absolutePath: string): Promise<ReadLocalPdfResult> =>
+    ipcRenderer.invoke(IPC.READ_LOCAL_PDF, absolutePath),
 };
 
 contextBridge.exposeInMainWorld("tribunal", tribunalApi);

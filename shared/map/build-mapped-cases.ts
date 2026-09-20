@@ -7,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { mergeCasoInforme, type MapFacts } from "./map-from-text";
 import { isInformesFolderName, matchLeafFromName } from "./match-link-local";
 import { isMatchFolderName, parseMatchFolderName } from "./sanitize";
+import { categoryRootFromFolderPath } from "./category-root";
 import {
   buildFalloDraft,
   WARNING_SIN_CASO,
@@ -153,6 +154,7 @@ function pushMappedCase(
     matchDate: facts.matchDate,
     competition: facts.competition,
     tipoEvento: facts.tipoEvento ?? null,
+    categoryRoot: categoryRootFromFolderPath(opts.folderPath),
     confidence: facts.confidence,
     engine: "classical",
     warning,
@@ -189,6 +191,7 @@ function casesPushError(
     matchDate: null,
     competition: null,
     tipoEvento: null,
+    categoryRoot: categoryRootFromFolderPath(hit.folderPath),
     confidence: 0,
     engine: "classical",
     warning: null,

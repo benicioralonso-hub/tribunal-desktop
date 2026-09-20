@@ -1,13 +1,10 @@
-import { useEffect, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { getTribunalApi } from "../bridge/api";
 import { MapBusy } from "../components/MapBusy";
-import {
-  DraftMainPanel,
-} from "../components/map/DraftMainPanel";
-import {
-  MatchSidebar,
-  groupCasesByMatch,
-} from "../components/map/MatchSidebar";
+import { DraftMainPanel } from "../components/map/DraftMainPanel";
+import { MatchSidebar } from "../components/map/MatchSidebar";
+import { EvidenceViewer } from "../components/map/EvidenceViewer";
+import { DebugJsonModal } from "../components/map/DebugJsonModal";
 import type { MappedCase, MapProgressEvent } from "../../shared/map/types";
 import type { FalloDraft } from "../../shared/fallo/types";
 
@@ -21,6 +18,7 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
   const [pending, startTransition] = useTransition();
   const [cases, setCases] = useState<MappedCase[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [debugCase, setDebugCase] = useState<MappedCase | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [progress, setProgress] = useState<MapProgressEvent>({
     phase: "scanning",
@@ -70,6 +68,7 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
     setError(null);
     setCases([]);
     setSelectedId(null);
+    setDebugCase(null);
     setMeta(null);
     setStarted(true);
     setProgress({
@@ -117,8 +116,11 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const groups = groupCasesByMatch(cases);
   const selected = cases.find((c) => c.id === selectedId) ?? null;
+  const siblings = useMemo(() => {
+    if (!selected) return [];
+    return cases.filter((c) => c.folderPath === selected.folderPath);
+  }, [cases, selected]);
   const mappedOk = cases.filter((c) => c.person || c.homeClub).length;
   const warnCount = cases.filter((c) => c.warning).length;
   const running = pending || progress.phase !== "done";
@@ -163,8 +165,8 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
       <div className="stage-map-head">
         <h2 id="stage2-title">Mapeo y borradores</h2>
         <p className="lede">
-          Extracción local en paralelo y redacción inmediata del fallo por
-          partido. Revisá, editá y continuá a auditoría.
+          Extracción local en paralelo, tipificación y evidencia PDF en split
+          view. Revisá, editá y continuá a auditoría.
         </p>
         <p className="folder-path">{folderPath}</p>
 
@@ -221,18 +223,29 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
       {error ? <p className="status-msg">{error}</p> : null}
 
       {cases.length > 0 ? (
-        <div className="stage-map-review">
+        <div className="stage-map-review stage-map-split">
           <MatchSidebar
-            groups={groups}
+            cases={cases}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onDebug={setDebugCase}
           />
-          <DraftMainPanel
-            caseItem={selected}
-            onDraftChange={onDraftChange}
-            onTipifyApply={onTipifyApply}
-          />
+          <div className="stage-map-workspace">
+            <DraftMainPanel
+              caseItem={selected}
+              onDraftChange={onDraftChange}
+              onTipifyApply={onTipifyApply}
+            />
+            <EvidenceViewer caseItem={selected} siblings={siblings} />
+          </div>
         </div>
+      ) : null}
+
+      {debugCase ? (
+        <DebugJsonModal
+          caseItem={debugCase}
+          onClose={() => setDebugCase(null)}
+        />
       ) : null}
     </section>
   );

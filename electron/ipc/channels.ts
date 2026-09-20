@@ -8,6 +8,7 @@ export const IPC = {
   AUDIT_STATUS: "stage3:audit-status",
   AUDIT_CANCEL: "stage3:audit-cancel",
   EXPORT_BOLETIN_DOCX: "stage4:export-boletin-docx",
+  READ_LOCAL_PDF: "pdf:read-local",
 } as const;
 
 export type BoletinFileEntry = {
@@ -23,9 +24,13 @@ export type SelectBoletinResult =
   | { ok: false; canceled: true }
   | { ok: false; error: string };
 
-export type ExportDocxResult =
+  export type ExportDocxResult =
   | { ok: true; filePath: string; durationMs: number }
   | { ok: false; canceled: true }
+  | { ok: false; error: string };
+
+export type ReadLocalPdfResult =
+  | { ok: true; base64: string; mimeType: "application/pdf"; fileName: string }
   | { ok: false; error: string };
 
 export type {
