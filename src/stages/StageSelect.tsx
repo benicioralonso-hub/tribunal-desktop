@@ -35,7 +35,7 @@ export function StageSelect({ onContinue }: StageSelectProps) {
   const pdfCount = files.filter((f) => f.ext === ".pdf").length;
 
   return (
-    <section className="stage-select" aria-labelledby="stage1-title">
+    <section className="stage-select glass-panel" aria-labelledby="stage1-title">
       <h2 id="stage1-title">Selección nativa</h2>
       <p className="lede">
         Elegí la carpeta del boletín en tu disco (por defecto G:\ en Windows).

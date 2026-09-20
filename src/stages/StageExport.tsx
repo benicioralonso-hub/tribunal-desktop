@@ -44,7 +44,10 @@ export function StageExport({ onBack, cases }: Props) {
   }
 
   return (
-    <section className="stage-select stage-export" aria-labelledby="stage4-title">
+    <section
+      className="stage-select stage-export glass-panel"
+      aria-labelledby="stage4-title"
+    >
       <h2 id="stage4-title">Exportación DOCX</h2>
       <p className="lede">
         Montserrat (Medium 500 / Bold) · 12pt · justificado · títulos subrayados
