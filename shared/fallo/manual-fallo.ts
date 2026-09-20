@@ -21,12 +21,47 @@ const MANUAL_FIXED_ARTICLES: Partial<Record<SanctionKind, string>> = {
   doble_amonestacion: "Regla 12 del International Board. (doble amonestación).-",
 };
 
-function defaultArticleForKind(kind: SanctionKind): string {
+export function isTextOnlyKind(kind: SanctionKind): boolean {
+  return (
+    kind === "archive_sin_tramite" ||
+    kind === "continuan_actuaciones" ||
+    kind === "remitir_estadios" ||
+    kind === "remitir_equidad" ||
+    kind === "aprueba_medida_autorizada" ||
+    kind === "otra"
+  );
+}
+
+export function isClubOnlyKind(kind: SanctionKind): boolean {
+  return (
+    kind === "multa_club" ||
+    kind === "multa_club_plazo" ||
+    kind === "dar_vista"
+  );
+}
+
+export function kindAllowsArticlePicker(kind: SanctionKind): boolean {
+  return (
+    kind === "suspension_partidos" ||
+    kind === "suspension_con_multa_ve" ||
+    kind === "doble_amonestacion"
+  );
+}
+
+export function kindNeedsPartidos(kind: SanctionKind): boolean {
+  return (
+    kind === "suspension_partidos" ||
+    kind === "suspension_con_multa_ve" ||
+    kind === "doble_amonestacion"
+  );
+}
+
+export function defaultArticleForKind(kind: SanctionKind): string {
   const fixed = MANUAL_FIXED_ARTICLES[kind];
   if (kind === "doble_amonestacion") {
     return "Art. 13 1. a) del Código Disciplinario";
   }
-  if (fixed) return fixed.trim();
+  if (fixed) return fixed.trim().replace(/\.-\s*$/, "");
   if (kind === "suspension_con_multa_ve") {
     return "Art. 13 1. c) del Código Disciplinario";
   }

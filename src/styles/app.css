@@ -451,10 +451,15 @@ button:disabled {
   margin: 0 20px 12px;
   padding: 12px 14px;
   border-radius: 10px;
-  border: 1px solid rgba(245, 197, 66, 0.5);
-  background: rgba(245, 197, 66, 0.08);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.03);
   display: grid;
   gap: 10px;
+}
+
+.tipify-panel-warn {
+  border-color: rgba(245, 197, 66, 0.5);
+  background: rgba(245, 197, 66, 0.08);
 }
 
 .tipify-badge {
@@ -462,6 +467,21 @@ button:disabled {
   font-weight: 700;
   font-size: 0.85rem;
   color: #f5c542;
+}
+
+.tipify-label {
+  margin: 0;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+  font-weight: 650;
+}
+
+.draft-tipo-texto {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
 }
 
 .tipify-controls {
@@ -482,13 +502,31 @@ button:disabled {
 
 .tipify-controls select,
 .tipify-controls input[type="number"] {
-  min-width: 180px;
+  min-width: 200px;
+  max-width: 100%;
   padding: 8px 10px;
   border-radius: 8px;
   border: 1px solid var(--line);
   background: var(--paper);
   color: var(--ink);
   font-size: 0.85rem;
+}
+
+.tipify-custom-text {
+  flex: 1 1 100%;
+}
+
+.tipify-custom-text textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--line);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 0.85rem;
+  resize: vertical;
+  font-family: inherit;
 }
 
 .tipify-apply {
