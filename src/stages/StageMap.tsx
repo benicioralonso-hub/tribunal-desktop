@@ -160,6 +160,49 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
     );
   }
 
+  function onToggleCaso(caseId: string, included: boolean) {
+    setCases((prev) =>
+      prev.map((c) => (c.id === caseId ? { ...c, included } : c)),
+    );
+  }
+
+  function onToggleInforme(folderPath: string, included: boolean) {
+    setCases((prev) =>
+      prev.map((c) =>
+        c.folderPath === folderPath ? { ...c, informeIncluded: included } : c,
+      ),
+    );
+  }
+
+  function onToggleAttachment(
+    folderPath: string,
+    attachmentId: string,
+    included: boolean,
+  ) {
+    setCases((prev) =>
+      prev.map((c) => {
+        if (c.folderPath !== folderPath) return c;
+        return {
+          ...c,
+          attachments: c.attachments.map((a) =>
+            a.id === attachmentId ? { ...a, included } : a,
+          ),
+        };
+      }),
+    );
+  }
+
+  function handleContinue() {
+    const forAudit = cases
+      .filter((c) => c.included)
+      .map((c) =>
+        c.informeIncluded ? c : { ...c, informePdfPath: null },
+      );
+    onContinue(forAudit);
+  }
+
+  const includedCount = cases.filter((c) => c.included).length;
+
   return (
     <section className="stage-select stage-map" aria-labelledby="stage2-title">
       <div className="stage-map-head">
@@ -190,9 +233,18 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
             <button
               type="button"
               className="btn-secondary"
-              onClick={() => onContinue(cases)}
+              onClick={handleContinue}
+              disabled={includedCount === 0}
+              title={
+                includedCount === 0
+                  ? "Incluí al menos un caso para continuar"
+                  : undefined
+              }
             >
               Continuar a auditoría
+              {includedCount < cases.length
+                ? ` (${includedCount}/${cases.length})`
+                : ""}
             </button>
           ) : null}
         </div>
@@ -229,6 +281,9 @@ export function StageMap({ folderPath, onBack, onContinue }: Props) {
             selectedId={selectedId}
             onSelect={setSelectedId}
             onDebug={setDebugCase}
+            onToggleCaso={onToggleCaso}
+            onToggleInforme={onToggleInforme}
+            onToggleAttachment={onToggleAttachment}
           />
           <div className="stage-map-workspace">
             <DraftMainPanel

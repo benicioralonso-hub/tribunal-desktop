@@ -30,6 +30,9 @@ const base: MappedCase = {
   engine: "classical",
   warning: null,
   draft: null,
+  included: true,
+  informeIncluded: true,
+  attachments: [],
 };
 
 function assert(cond: unknown, msg: string): asserts cond {

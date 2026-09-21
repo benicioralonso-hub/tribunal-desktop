@@ -13,7 +13,11 @@ import {
   WARNING_SIN_CASO,
 } from "../fallo/build-draft";
 import type { FalloDraft } from "../fallo/types";
-import type { MappedCase } from "./types";
+import type {
+  AttachmentKind,
+  MappedAttachment,
+  MappedCase,
+} from "./types";
 
 export type PdfHit = {
   absolutePath: string;
@@ -32,6 +36,24 @@ type ClassifiedHit = PdfHit & {
   kind: "caso" | "informe" | "otro";
   leaf: string;
 };
+
+/** Heurística por nombre para adjuntos (descargo / nota / otro). */
+export function classifyAttachmentKind(fileName: string): AttachmentKind {
+  const name = fileName.toLowerCase();
+  if (name.includes("descargo")) return "descargo";
+  if (name.includes("nota")) return "nota";
+  return "otro";
+}
+
+function toAttachments(hits: ClassifiedHit[]): MappedAttachment[] {
+  return hits.map((h) => ({
+    id: randomUUID(),
+    name: path.basename(h.absolutePath),
+    path: h.absolutePath,
+    kind: classifyAttachmentKind(path.basename(h.absolutePath)),
+    included: false,
+  }));
+}
 
 function classifyHit(
   hit: PdfHit,
@@ -102,6 +124,7 @@ function pushMappedCase(
     warning?: string | null;
     /** Borrador compartido del partido (1 doc, N resoluciones). */
     sharedDraft?: FalloDraft | null;
+    attachments?: MappedAttachment[];
   },
 ): MappedCase {
   const folderMeta = parseMatchFolderName(opts.folderName);
@@ -159,6 +182,9 @@ function pushMappedCase(
     engine: "classical",
     warning,
     draft,
+    included: true,
+    informeIncluded: true,
+    attachments: opts.attachments ?? [],
     error:
       opts.casoRes && !opts.casoRes.ok
         ? opts.casoRes.error
@@ -196,6 +222,9 @@ function casesPushError(
     engine: "classical",
     warning: null,
     draft: null,
+    included: true,
+    informeIncluded: true,
+    attachments: [],
     error,
   });
 }
@@ -204,6 +233,7 @@ function casesPushError(
  * Agrupa exclusivamente por carpeta de partido.
  * 1 informe compartido entre N casos del mismo partido.
  * Informe sin caso → warning.
+ * PDFs "otro" → attachments (nunca anclas de caso).
  * Borrador manual automático: 1 fallo por partido (N resoluciones).
  */
 export function buildMappedCases(
@@ -240,6 +270,7 @@ export function buildMappedCases(
     const casoHits = hits.filter((h) => h.kind === "caso");
     const informeHits = hits.filter((h) => h.kind === "informe");
     const otros = hits.filter((h) => h.kind === "otro");
+    const attachments = toAttachments(otros);
 
     const folderLeaf = matchLeafFromName(folderName);
     const crossInformes = (informesByLeaf.get(folderLeaf) ?? []).filter(
@@ -261,9 +292,6 @@ export function buildMappedCases(
     if (sharedInforme) usedInformes.add(sharedInforme.absolutePath);
     for (const inf of informeHits) usedInformes.add(inf.absolutePath);
 
-    const anchors =
-      casoHits.length > 0 ? casoHits : otros.length > 0 ? otros : [];
-
     const folderMeta = parseMatchFolderName(folderName);
     const infFacts =
       sharedInforme && byPath.get(sharedInforme.absolutePath)?.ok
@@ -273,7 +301,32 @@ export function buildMappedCases(
           >).facts
         : null;
 
-    if (anchors.length === 0) {
+    // Solo adjuntos (sin caso ni informe) → shell para que la carpeta sea visible.
+    if (casoHits.length === 0 && !sharedInforme) {
+      if (attachments.length > 0) {
+        pushMappedCase(cases, {
+          folderPath: folder,
+          folderName,
+          caso: null,
+          informe: null,
+          warning: null,
+          sharedDraft: buildSharedDraft({
+            folderName,
+            expediente: folderMeta.expedienteHint,
+            homeClub: folderMeta.homeClub,
+            awayClub: folderMeta.awayClub,
+            matchDate: null,
+            competition: null,
+            missingCaso: true,
+            persons: [],
+          }),
+          attachments,
+        });
+      }
+      continue;
+    }
+
+    if (casoHits.length === 0) {
       if (sharedInforme) {
         const merged = mergeCasoInforme(null, infFacts, folderName);
         const draft = buildSharedDraft({
@@ -294,13 +347,14 @@ export function buildMappedCases(
           infRes: byPath.get(sharedInforme.absolutePath),
           warning: WARNING_SIN_CASO,
           sharedDraft: draft,
+          attachments,
         });
       }
       continue;
     }
 
     // Hechos por caso + merge con informe para clubs/fecha
-    const personRows = anchors.map((caso) => {
+    const personRows = casoHits.map((caso) => {
       const casoRes = byPath.get(caso.absolutePath);
       const merged = mergeCasoInforme(
         casoRes?.ok ? casoRes.facts : null,
@@ -351,6 +405,7 @@ export function buildMappedCases(
           ? byPath.get(sharedInforme.absolutePath)
           : undefined,
         sharedDraft,
+        attachments,
       });
     }
   }
@@ -366,6 +421,7 @@ export function buildMappedCases(
       informe: hit,
       infRes: byPath.get(hit.absolutePath),
       warning: WARNING_SIN_CASO,
+      attachments: [],
     });
   }
 
@@ -375,7 +431,8 @@ export function buildMappedCases(
       const already = cases.some(
         (c) =>
           c.casoPdfPath === hit.absolutePath ||
-          c.informePdfPath === hit.absolutePath,
+          c.informePdfPath === hit.absolutePath ||
+          c.attachments.some((a) => a.path === hit.absolutePath),
       );
       if (!already) {
         casesPushError(cases, hit, res.error);
